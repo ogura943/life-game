@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ファンタジーライフ風ゲーム</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <!-- ヘッダー：プレイヤーステータス -->
+  <header id="status-bar">
+    <div class="stat">
+      <span class="stat-label">Lv</span>
+      <span id="stat-level">1</span>
+    </div>
+    <div class="stat hp-stat">
+      <span class="stat-label">HP</span>
+      <div class="bar"><div id="hp-fill" class="bar-fill"></div></div>
+      <span id="stat-hp">30/30</span>
+    </div>
+    <div class="stat exp-stat">
+      <span class="stat-label">EXP</span>
+      <div class="bar"><div id="exp-fill" class="bar-fill exp"></div></div>
+      <span id="stat-exp">0/10</span>
+    </div>
+    <div class="stat"><span class="stat-label">⚔</span><span id="stat-atk">5</span></div>
+    <div class="stat"><span class="stat-label">🛡</span><span id="stat-def">2</span></div>
+    <div class="stat"><span class="stat-label">💰</span><span id="stat-gold">0</span></div>
+  </header>
+
+  <!-- タブナビ -->
+  <nav id="tabs">
+    <button class="tab-btn active" data-tab="explore">🗺 探索</button>
+    <button class="tab-btn" data-tab="gather">⛏ 採集</button>
+    <button class="tab-btn" data-tab="craft">🔨 作成</button>
+    <button class="tab-btn" data-tab="equip">🎽 装備</button>
+    <button class="tab-btn" data-tab="bag">🎒 持ち物</button>
+  </nav>
+
+  <main id="content">
+    <!-- 探索（エリア選択＆戦闘） -->
+    <section id="tab-explore" class="tab-panel active">
+      <h2>探索するエリアを選ぶ</h2>
+      <div id="area-list" class="area-list"></div>
+      <div id="battle" class="battle hidden"></div>
+    </section>
+
+    <!-- 採集 -->
+    <section id="tab-gather" class="tab-panel">
+      <h2>採集</h2>
+      <p class="hint">エリアを選んで、木・石・鉱石から素材を集めよう。良い道具ほどたくさん採れる。</p>
+      <div id="gather-area-list" class="chip-row"></div>
+      <div id="gather-nodes" class="node-grid"></div>
+    </section>
+
+    <!-- 作成 -->
+    <section id="tab-craft" class="tab-panel">
+      <h2>作成</h2>
+      <p class="hint">集めた素材で武器・防具・道具を作ろう。作れるものは緑色で表示される。</p>
+      <div id="recipe-list" class="recipe-list"></div>
+    </section>
+
+    <!-- 装備 -->
+    <section id="tab-equip" class="tab-panel">
+      <h2>装備</h2>
+      <div id="equip-slots" class="equip-slots"></div>
+      <h3>所持している装備・道具</h3>
+      <div id="owned-gear" class="gear-list"></div>
+    </section>
+
+    <!-- 持ち物 -->
+    <section id="tab-bag" class="tab-panel">
+      <h2>持ち物（素材）</h2>
+      <div id="material-list" class="material-list"></div>
+      <button id="reset-btn" class="danger-btn">最初からやり直す</button>
+    </section>
+  </main>
+
+  <!-- ログ -->
+  <div id="log"></div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>

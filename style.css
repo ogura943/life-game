@@ -1,0 +1,240 @@
+:root {
+  --bg: #1b1f2a;
+  --panel: #252b3a;
+  --panel-2: #2e3650;
+  --accent: #6ad6a8;
+  --accent-2: #f2c14e;
+  --danger: #e06c75;
+  --text: #e6e9f0;
+  --muted: #98a0b3;
+  --border: #3a4258;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, sans-serif;
+  background: linear-gradient(160deg, #161a24, #1b1f2a);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+#app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+/* ステータスバー */
+#status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.stat { display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: 14px; }
+.stat-label { color: var(--muted); font-size: 12px; }
+.hp-stat, .exp-stat { flex: 1; min-width: 140px; }
+.bar {
+  flex: 1;
+  height: 12px;
+  background: #11141d;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg,#e06c75,#ef9aa1); transition: width .25s; }
+.bar-fill.exp { background: linear-gradient(90deg,#f2c14e,#ffe08a); }
+
+/* タブ */
+#tabs {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  flex: 1;
+  min-width: 80px;
+  padding: 10px 6px;
+  border: none;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .15s;
+}
+.tab-btn:hover { background: var(--panel-2); color: var(--text); }
+.tab-btn.active { background: var(--accent); color: #10241b; }
+
+/* パネル */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+h2 { font-size: 18px; margin: 6px 0 12px; }
+h3 { font-size: 15px; color: var(--muted); margin: 18px 0 8px; }
+.hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+
+/* エリア一覧 */
+.area-list, .recipe-list, .gear-list { display: grid; gap: 10px; }
+.area-card, .recipe-card, .gear-card {
+  background: var(--panel);
+  border: 1px solid #333a4f;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.area-card { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.area-card .area-info { flex: 1; }
+.area-card h4 { margin: 0 0 3px; font-size: 16px; }
+.area-card .sub { color: var(--muted); font-size: 12px; }
+.area-card.locked { opacity: .5; }
+
+button.action {
+  background: var(--accent);
+  color: #10241b;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button.action:hover { filter: brightness(1.08); }
+button.action:disabled { background: #444b60; color: var(--muted); cursor: not-allowed; }
+button.secondary { background: var(--panel-2); color: var(--text); }
+
+/* チップ（エリア切替） */
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.chip {
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: var(--panel);
+  color: var(--muted);
+  border: 1px solid #333a4f;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.chip.active { background: var(--accent-2); color: #3a2c05; border-color: var(--accent-2); }
+.chip.locked { opacity: .4; cursor: not-allowed; }
+
+/* 採集ノード */
+.node-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 10px; }
+.node-card {
+  background: var(--panel);
+  border: 1px solid #333a4f;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+.node-card .icon { font-size: 34px; }
+.node-card h4 { margin: 6px 0 2px; font-size: 15px; }
+.node-card .sub { color: var(--muted); font-size: 11px; margin-bottom: 10px; }
+
+/* レシピ */
+.recipe-card { display: flex; align-items: center; gap: 12px; }
+.recipe-card .gicon { font-size: 30px; }
+.recipe-card .rinfo { flex: 1; }
+.recipe-card h4 { margin: 0 0 2px; font-size: 15px; }
+.recipe-card .effect { color: var(--accent); font-size: 12px; font-weight: 600; }
+.recipe-card .cost { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.recipe-card .cost .lack { color: var(--danger); }
+.recipe-card.owned { border-color: var(--accent); }
+
+/* 装備スロット */
+.equip-slots { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 10px; margin-bottom: 6px; }
+.slot {
+  background: var(--panel);
+  border: 1px dashed #44506e;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+.slot .slot-name { color: var(--muted); font-size: 12px; }
+.slot .slot-item { font-size: 15px; font-weight: 700; margin-top: 4px; }
+.slot .slot-item.empty { color: var(--muted); font-weight: 400; }
+
+.gear-card { display: flex; align-items: center; gap: 12px; }
+.gear-card .gicon { font-size: 26px; }
+.gear-card .ginfo { flex: 1; }
+.gear-card h4 { margin: 0; font-size: 14px; }
+.gear-card .effect { color: var(--accent); font-size: 12px; }
+.gear-card .equipped-tag { color: var(--accent-2); font-size: 12px; font-weight: 700; }
+
+/* 素材 */
+.material-list { display: grid; grid-template-columns: repeat(auto-fill,minmax(120px,1fr)); gap: 10px; }
+.mat-card {
+  background: var(--panel);
+  border: 1px solid #333a4f;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+.mat-card .icon { font-size: 26px; }
+.mat-card .mname { font-size: 12px; margin-top: 2px; }
+.mat-card .mqty { font-weight: 700; color: var(--accent-2); }
+
+/* 戦闘 */
+.battle { margin-top: 14px; }
+.battle.hidden, .hidden { display: none; }
+.combatants { display: flex; justify-content: space-around; align-items: flex-end; gap: 10px; margin-bottom: 14px; }
+.fighter { text-align: center; flex: 1; }
+.fighter .sprite { font-size: 54px; }
+.fighter .fname { font-weight: 700; margin: 4px 0; }
+.fighter .fbar { height: 10px; background:#11141d; border-radius: 5px; overflow: hidden; }
+.fighter .fbar > div { height: 100%; background: linear-gradient(90deg,#e06c75,#ef9aa1); transition: width .2s; }
+.fighter.enemy .fbar > div { background: linear-gradient(90deg,#c678dd,#dca5f0); }
+.battle-actions { display: flex; gap: 10px; justify-content: center; }
+.vs { align-self: center; color: var(--muted); font-weight: 700; }
+.dmg-pop { animation: pop .5s ease-out; }
+@keyframes pop { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-18px);opacity:0} }
+
+/* ログ */
+#log {
+  margin-top: 16px;
+  background: #11141d;
+  border-radius: 10px;
+  padding: 10px 12px;
+  height: 130px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+#log .l-good { color: var(--accent); }
+#log .l-bad { color: var(--danger); }
+#log .l-gold { color: var(--accent-2); }
+#log .l-sys { color: var(--muted); }
+
+.danger-btn {
+  margin-top: 20px;
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.danger-btn:hover { background: var(--danger); color: #fff; }
+
+.empty-note { color: var(--muted); font-size: 13px; padding: 10px 0; }
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #10241b;
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+  z-index: 50;
+  animation: toastIn .3s ease-out;
+}
+@keyframes toastIn { from{opacity:0;transform:translate(-50%,10px)} to{opacity:1;transform:translate(-50%,0)} }
