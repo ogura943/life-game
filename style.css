@@ -206,7 +206,27 @@ button.secondary { background: var(--panel-2); color: var(--text); }
 .battle.hidden, .hidden { display: none; }
 .combatants { display: flex; justify-content: space-around; align-items: flex-end; gap: 10px; margin-bottom: 14px; }
 .fighter { text-align: center; flex: 1; }
-.fighter .sprite { font-size: 54px; }
+.fighter .sprite { font-size: 54px; height: 92px; display: flex; align-items: center; justify-content: center; }
+.sprite-inner {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  animation: bob 2.4s ease-in-out infinite;
+}
+.fighter.enemy .sprite-inner { animation-delay: -1.2s; }
+.sprite-inner img.pix {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.sprite-inner .crown-svg { top: -2px; }
+.boss-aura { filter: drop-shadow(0 0 7px rgba(255,90,90,.85)); animation: bob 2s ease-in-out infinite, bossPulse 1.4s ease-in-out infinite; }
+@keyframes bob { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-5px); } }
+@keyframes bossPulse { 0%,100%{ filter: drop-shadow(0 0 6px rgba(255,90,90,.7)); } 50%{ filter: drop-shadow(0 0 12px rgba(255,120,60,1)); } }
 .fighter .fname { font-weight: 700; margin: 4px 0; }
 .fighter .fbar { height: 10px; background:#11141d; border-radius: 5px; overflow: hidden; }
 .fighter .fbar > div { height: 100%; background: linear-gradient(90deg,#e06c75,#ef9aa1); transition: width .2s; }

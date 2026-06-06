@@ -717,7 +717,7 @@ function renderBattle() {
   wrap.innerHTML = `
     <div class="combatants">
       <div class="fighter player">
-        <div class="sprite">🧑‍🌾</div>
+        <div class="sprite">${spriteMarkup("hero", false)}</div>
         <div class="fname">あなた ${pStatus}</div>
         <div class="fbar"><div style="width:${state.hp / s.maxHp * 100}%"></div></div>
         <div class="sub">HP ${state.hp}/${s.maxHp}　MP ${state.mp}/${s.maxMp}</div>
@@ -725,7 +725,7 @@ function renderBattle() {
       </div>
       <div class="vs">VS</div>
       <div class="fighter enemy">
-        <div class="sprite">${e.sprite}</div>
+        <div class="sprite">${spriteMarkup(enemyArtKey(e), e.isBoss)}</div>
         <div class="fname">${e.isBoss ? "👑" : ""}${e.name} ${statusIcons(e)}</div>
         <div class="fbar"><div style="width:${e.hp / e.maxHp * 100}%"></div></div>
         <div class="sub">HP ${e.hp}/${e.maxHp}</div>
