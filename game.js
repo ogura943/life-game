@@ -1,11 +1,15 @@
 /* =========================================================
    ファンタジーライフ風ゲーム
    採集 → 装備作成 → 強化 → 戦闘 のループを楽しむブラウザゲーム
+
+   戦闘の特徴:
+   - 武器タイプ(剣/斧/槍/弓/杖/短剣)で戦い方が変わる
+   - MP を使うスキル、防御コマンド
+   - 会心(クリティカル) と 状態異常(毒/火傷/スタン)
+   - 属性(炎/氷/雷) と モンスターの弱点
    ========================================================= */
 
-/* ---------- データ定義 ---------- */
-
-// 素材マスター
+/* ---------- 素材 ---------- */
 const MATERIALS = {
   wood:      { name: "木材",          icon: "🪵" },
   hardwood:  { name: "硬い木材",      icon: "🌳" },
@@ -19,205 +23,234 @@ const MATERIALS = {
   crystal:   { name: "クリスタル",    icon: "💎" },
 };
 
-// 道具のランク（採集力）。bare=素手
-const TOOL_TIER = { bare: 0, copper: 1, iron: 2, mithril: 3 };
+/* ---------- 属性 ---------- */
+const ELEMENTS = {
+  fire:      { name: "炎", icon: "🔥" },
+  ice:       { name: "氷", icon: "❄️" },
+  lightning: { name: "雷", icon: "⚡" },
+};
+function elemLabel(e) { return e && ELEMENTS[e] ? ELEMENTS[e].icon + ELEMENTS[e].name : ""; }
 
-// 採集ノード： tool=必要な道具種別(axe/pickaxe), tier=必要ランク, yields=[{mat, min, max, chance}]
-// エリア定義
+/* ---------- 武器タイプ（戦い方の違い） ----------
+   crit: 会心率 / mult: 攻撃倍率 / hits: 攻撃回数 / pierce: 防御貫通率
+   ignoreDef: 防御無視 / skills: 使えるスキルID / onCritStatus: 会心時に付与する状態 */
+const WTYPES = {
+  fist:   { name: "素手",   crit: 0.03, mult: 1.0,  hits: 1, pierce: 0,   ignoreDef: false, skills: [],                  note: "武器なし" },
+  sword:  { name: "剣",     crit: 0.12, mult: 1.0,  hits: 1, pierce: 0,   ignoreDef: false, skills: ["power_strike"],     note: "バランス型・そこそこ会心" },
+  axe:    { name: "斧",     crit: 0.0,  mult: 1.35, hits: 1, pierce: 0,   ignoreDef: false, skills: ["cleave"],           note: "高火力だが会心しない" },
+  spear:  { name: "槍",     crit: 0.06, mult: 1.0,  hits: 1, pierce: 0.5, ignoreDef: false, skills: ["triple"],           note: "敵の防御を半分貫通" },
+  bow:    { name: "弓",     crit: 0.12, mult: 0.62, hits: 2, pierce: 0,   ignoreDef: false, skills: ["snipe"],            note: "1ターンに2回攻撃" },
+  staff:  { name: "杖",     crit: 0.05, mult: 1.0,  hits: 1, pierce: 0,   ignoreDef: true,  skills: ["bolt", "heal"],     isMagic: true, note: "防御無視の魔法・回復も可" },
+  dagger: { name: "短剣",   crit: 0.35, mult: 0.85, hits: 1, pierce: 0,   ignoreDef: false, skills: ["venom"], onCritStatus: "poison", note: "高会心・会心で毒" },
+};
+
+/* ---------- スキル ---------- */
+const SKILLS = {
+  power_strike: { name: "強斬り",   icon: "💢", mp: 8,  desc: "会心しやすい強烈な一撃 (1.8倍)",
+    run: (c) => c.hit({ mult: 1.8, critBonus: 0.25 }) },
+  cleave:       { name: "兜割り",   icon: "🪓", mp: 12, desc: "防御無視の渾身の一撃 (2.3倍)",
+    run: (c) => c.hit({ mult: 2.3, ignoreDef: true }) },
+  triple:       { name: "三連突き", icon: "🔱", mp: 12, desc: "防御を貫く3連撃 (0.85倍×3)",
+    run: (c) => { for (let i = 0; i < 3; i++) c.hit({ mult: 0.85, pierce: 0.75 }); } },
+  snipe:        { name: "狙撃",     icon: "🎯", mp: 10, desc: "急所を狙う2連射 (1.4倍×2)",
+    run: (c) => { c.hit({ mult: 1.4 }); c.hit({ mult: 1.4 }); } },
+  bolt:         { name: "魔法弾",   icon: "🔮", mp: 10, desc: "属性の防御無視魔法 (2.0倍)＋状態異常",
+    run: (c) => c.hit({ mult: 2.0, ignoreDef: true, forceStatus: true }) },
+  heal:         { name: "ヒール",   icon: "💚", mp: 10, desc: "最大HPの40%を回復",
+    run: (c) => c.heal(0.4) },
+  venom:        { name: "毒刃",     icon: "🟢", mp: 6,  desc: "猛毒を与える刃 (1.3倍)",
+    run: (c) => c.hit({ mult: 1.3, inflict: "poison" }) },
+};
+
+/* ---------- エリア ---------- */
 const AREAS = [
   {
-    id: "grassland",
-    name: "はじまりの草原",
-    icon: "🌿",
-    reqLevel: 1,
+    id: "grassland", name: "はじまりの草原", icon: "🌿", reqLevel: 1,
     desc: "弱いモンスターと基本素材の宝庫。",
     nodes: [
-      { id: "g-tree", name: "若木", icon: "🌲", tool: "axe", tier: 0,
-        yields: [{ mat: "wood", min: 1, max: 3, chance: 1 }] },
-      { id: "g-rock", name: "石ころ", icon: "🪨", tool: "pickaxe", tier: 0,
-        yields: [{ mat: "stone", min: 1, max: 2, chance: 1 }] },
+      { id: "g-tree", name: "若木", icon: "🌲", tool: "axe", tier: 0, yields: [{ mat: "wood", min: 1, max: 3, chance: 1 }] },
+      { id: "g-rock", name: "石ころ", icon: "🪨", tool: "pickaxe", tier: 0, yields: [{ mat: "stone", min: 1, max: 2, chance: 1 }] },
     ],
     monsters: [
-      { name: "スライム", sprite: "🟢", hp: 18, atk: 4, def: 0, exp: 6, gold: 5,
+      { name: "スライム", sprite: "🟢", hp: 18, atk: 4, def: 0, exp: 6, gold: 5, weak: "fire",
         drops: [{ mat: "gel", min: 1, max: 2, chance: .9 }] },
-      { name: "ホーンラビット", sprite: "🐰", hp: 24, atk: 6, def: 1, exp: 9, gold: 8,
+      { name: "ホーンラビット", sprite: "🐰", hp: 24, atk: 6, def: 1, exp: 9, gold: 8, weak: "lightning",
         drops: [{ mat: "pelt", min: 1, max: 1, chance: .7 }, { mat: "fang", min: 1, max: 1, chance: .3 }] },
     ],
   },
   {
-    id: "forest",
-    name: "ささやきの森",
-    icon: "🌳",
-    reqLevel: 4,
+    id: "forest", name: "ささやきの森", icon: "🌳", reqLevel: 4,
     desc: "硬い木材と手強い獣たち。斧があると効率的。",
     nodes: [
-      { id: "f-tree", name: "大樹", icon: "🌳", tool: "axe", tier: 1,
-        yields: [{ mat: "wood", min: 2, max: 4, chance: 1 }, { mat: "hardwood", min: 1, max: 2, chance: .8 }] },
-      { id: "f-rock", name: "苔むした岩", icon: "🪨", tool: "pickaxe", tier: 1,
-        yields: [{ mat: "stone", min: 2, max: 3, chance: 1 }, { mat: "shard", min: 1, max: 1, chance: .25 }] },
+      { id: "f-tree", name: "大樹", icon: "🌳", tool: "axe", tier: 1, yields: [{ mat: "wood", min: 2, max: 4, chance: 1 }, { mat: "hardwood", min: 1, max: 2, chance: .8 }] },
+      { id: "f-rock", name: "苔むした岩", icon: "🪨", tool: "pickaxe", tier: 1, yields: [{ mat: "stone", min: 2, max: 3, chance: 1 }, { mat: "shard", min: 1, max: 1, chance: .25 }] },
     ],
     monsters: [
-      { name: "ゴブリン", sprite: "👺", hp: 40, atk: 10, def: 3, exp: 18, gold: 14,
+      { name: "ゴブリン", sprite: "👺", hp: 40, atk: 10, def: 3, exp: 18, gold: 14, weak: "fire",
         drops: [{ mat: "fang", min: 1, max: 2, chance: .7 }, { mat: "shard", min: 1, max: 1, chance: .3 }] },
-      { name: "森オオカミ", sprite: "🐺", hp: 55, atk: 14, def: 4, exp: 26, gold: 20,
+      { name: "森オオカミ", sprite: "🐺", hp: 55, atk: 14, def: 4, exp: 26, gold: 20, weak: "ice",
         drops: [{ mat: "pelt", min: 1, max: 3, chance: .9 }, { mat: "fang", min: 1, max: 2, chance: .6 }] },
     ],
   },
   {
-    id: "mountain",
-    name: "嶮しい岩山",
-    icon: "⛰️",
-    reqLevel: 9,
+    id: "mountain", name: "嶮しい岩山", icon: "⛰️", reqLevel: 9,
     desc: "鉄やクリスタルが眠る危険地帯。強いピッケルが必要。",
     nodes: [
-      { id: "m-rock", name: "鉄鉱脈", icon: "⛏️", tool: "pickaxe", tier: 2,
-        yields: [{ mat: "iron", min: 1, max: 3, chance: 1 }, { mat: "stone", min: 1, max: 2, chance: .8 }] },
-      { id: "m-crystal", name: "輝く晶洞", icon: "💎", tool: "pickaxe", tier: 2,
-        yields: [{ mat: "crystal", min: 1, max: 1, chance: .5 }, { mat: "shard", min: 1, max: 2, chance: .7 }] },
-      { id: "m-tree", name: "古木", icon: "🌲", tool: "axe", tier: 2,
-        yields: [{ mat: "hardwood", min: 2, max: 3, chance: 1 }] },
+      { id: "m-rock", name: "鉄鉱脈", icon: "⛏️", tool: "pickaxe", tier: 2, yields: [{ mat: "iron", min: 1, max: 3, chance: 1 }, { mat: "stone", min: 1, max: 2, chance: .8 }] },
+      { id: "m-crystal", name: "輝く晶洞", icon: "💎", tool: "pickaxe", tier: 2, yields: [{ mat: "crystal", min: 1, max: 1, chance: .5 }, { mat: "shard", min: 1, max: 2, chance: .7 }] },
+      { id: "m-tree", name: "古木", icon: "🌲", tool: "axe", tier: 2, yields: [{ mat: "hardwood", min: 2, max: 3, chance: 1 }] },
     ],
     monsters: [
-      { name: "オーク", sprite: "👹", hp: 90, atk: 20, def: 8, exp: 45, gold: 35,
+      { name: "オーク", sprite: "👹", hp: 90, atk: 20, def: 8, exp: 45, gold: 35, weak: "ice",
         drops: [{ mat: "fang", min: 2, max: 3, chance: .8 }, { mat: "iron", min: 1, max: 2, chance: .4 }] },
-      { name: "ロックゴーレム", sprite: "🗿", hp: 140, atk: 26, def: 14, exp: 70, gold: 55,
+      { name: "ロックゴーレム", sprite: "🗿", hp: 140, atk: 26, def: 14, exp: 70, gold: 55, weak: "lightning",
         drops: [{ mat: "stone", min: 3, max: 5, chance: 1 }, { mat: "iron", min: 1, max: 3, chance: .6 }, { mat: "crystal", min: 1, max: 1, chance: .25 }] },
     ],
   },
   {
-    id: "volcano",
-    name: "竜の棲む火口",
-    icon: "🌋",
-    reqLevel: 16,
+    id: "volcano", name: "竜の棲む火口", icon: "🌋", reqLevel: 16,
     desc: "最強の素材ミスリルと、伝説の竜が待つ。",
     nodes: [
-      { id: "v-rock", name: "ミスリル鉱脈", icon: "🔷", tool: "pickaxe", tier: 3,
-        yields: [{ mat: "mithril", min: 1, max: 2, chance: .8 }, { mat: "iron", min: 1, max: 3, chance: 1 }] },
-      { id: "v-crystal", name: "竜晶", icon: "💎", tool: "pickaxe", tier: 3,
-        yields: [{ mat: "crystal", min: 1, max: 2, chance: .8 }] },
+      { id: "v-rock", name: "ミスリル鉱脈", icon: "🔷", tool: "pickaxe", tier: 3, yields: [{ mat: "mithril", min: 1, max: 2, chance: .8 }, { mat: "iron", min: 1, max: 3, chance: 1 }] },
+      { id: "v-crystal", name: "竜晶", icon: "💎", tool: "pickaxe", tier: 3, yields: [{ mat: "crystal", min: 1, max: 2, chance: .8 }] },
     ],
     monsters: [
-      { name: "ヘルハウンド", sprite: "🐕", hp: 200, atk: 34, def: 16, exp: 110, gold: 90,
+      { name: "ヘルハウンド", sprite: "🐕", hp: 200, atk: 34, def: 16, exp: 110, gold: 90, weak: "ice",
         drops: [{ mat: "fang", min: 3, max: 5, chance: 1 }, { mat: "crystal", min: 1, max: 2, chance: .4 }] },
-      { name: "炎竜ヴァルガ", sprite: "🐉", hp: 380, atk: 48, def: 24, exp: 260, gold: 220,
+      { name: "炎竜ヴァルガ", sprite: "🐉", hp: 380, atk: 48, def: 24, exp: 260, gold: 220, weak: "ice",
         drops: [{ mat: "mithril", min: 2, max: 4, chance: 1 }, { mat: "crystal", min: 2, max: 3, chance: .8 }] },
     ],
   },
 ];
 
-// レシピ： type=weapon/armor/axe/pickaxe, stats={atk,def}, tier(道具用), cost={mat:qty}
+/* ---------- レシピ ---------- */
+const TOOL_TIER = { bare: 0, copper: 1, iron: 2, mithril: 3 };
+
 const RECIPES = [
   // --- 道具：斧 ---
-  { id: "axe_copper", name: "銅の斧", icon: "🪓", type: "axe", tier: 1,
-    cost: { wood: 3, stone: 2 }, desc: "森の大樹を伐れる。" },
-  { id: "axe_iron", name: "鉄の斧", icon: "🪓", type: "axe", tier: 2,
-    cost: { hardwood: 2, iron: 3 }, desc: "古木すら伐り倒す。" },
-  { id: "axe_mithril", name: "ミスリルの斧", icon: "🪓", type: "axe", tier: 3,
-    cost: { hardwood: 4, mithril: 2 }, desc: "あらゆる木を伐採可能。" },
+  { id: "axe_copper", name: "銅の斧", icon: "🪓", type: "axe", tier: 1, cost: { wood: 3, stone: 2 }, desc: "森の大樹を伐れる。" },
+  { id: "axe_iron", name: "鉄の斧", icon: "🪓", type: "axe", tier: 2, cost: { hardwood: 2, iron: 3 }, desc: "古木すら伐り倒す。" },
+  { id: "axe_mithril", name: "ミスリルの斧", icon: "🪓", type: "axe", tier: 3, cost: { hardwood: 4, mithril: 2 }, desc: "あらゆる木を伐採可能。" },
   // --- 道具：ピッケル ---
-  { id: "pick_copper", name: "銅のピッケル", icon: "⛏️", type: "pickaxe", tier: 1,
-    cost: { wood: 2, stone: 3 }, desc: "森の岩を掘れる。" },
-  { id: "pick_iron", name: "鉄のピッケル", icon: "⛏️", type: "pickaxe", tier: 2,
-    cost: { hardwood: 2, iron: 4 }, desc: "鉄鉱脈や晶洞を掘れる。" },
-  { id: "pick_mithril", name: "ミスリルのピッケル", icon: "⛏️", type: "pickaxe", tier: 3,
-    cost: { iron: 5, mithril: 2 }, desc: "ミスリル鉱脈を掘れる。" },
-  // --- 武器 ---
-  { id: "w_wood", name: "木の剣", icon: "🗡️", type: "weapon", stats: { atk: 4 },
-    cost: { wood: 4 }, desc: "ATK +4" },
-  { id: "w_stone", name: "石の戦斧", icon: "🪓", type: "weapon", stats: { atk: 8 },
-    cost: { wood: 3, stone: 5 }, desc: "ATK +8" },
-  { id: "w_iron", name: "鉄の剣", icon: "⚔️", type: "weapon", stats: { atk: 16 },
-    cost: { iron: 4, hardwood: 2, fang: 2 }, desc: "ATK +16" },
-  { id: "w_crystal", name: "クリスタルブレード", icon: "🗡️", type: "weapon", stats: { atk: 28 },
-    cost: { iron: 3, crystal: 2, shard: 3 }, desc: "ATK +28" },
-  { id: "w_dragon", name: "竜殺しの大剣", icon: "⚔️", type: "weapon", stats: { atk: 46 },
-    cost: { mithril: 3, crystal: 3, fang: 5 }, desc: "ATK +46" },
+  { id: "pick_copper", name: "銅のピッケル", icon: "⛏️", type: "pickaxe", tier: 1, cost: { wood: 2, stone: 3 }, desc: "森の岩を掘れる。" },
+  { id: "pick_iron", name: "鉄のピッケル", icon: "⛏️", type: "pickaxe", tier: 2, cost: { hardwood: 2, iron: 4 }, desc: "鉄鉱脈や晶洞を掘れる。" },
+  { id: "pick_mithril", name: "ミスリルのピッケル", icon: "⛏️", type: "pickaxe", tier: 3, cost: { iron: 5, mithril: 2 }, desc: "ミスリル鉱脈を掘れる。" },
+
+  // --- 武器（wtype と element で個性が出る） ---
+  { id: "w_wood_sword",  name: "木の剣",        icon: "🗡️", type: "weapon", wtype: "sword",  stats: { atk: 6 },          cost: { wood: 4 } },
+  { id: "w_stone_axe",   name: "石の戦斧",      icon: "🪓",  type: "weapon", wtype: "axe",    stats: { atk: 9 },          cost: { wood: 3, stone: 5 } },
+  { id: "w_oak_spear",   name: "樫の槍",        icon: "🔱",  type: "weapon", wtype: "spear",  stats: { atk: 8 },          cost: { hardwood: 2, stone: 3 } },
+  { id: "w_hunt_bow",    name: "狩人の弓",      icon: "🏹",  type: "weapon", wtype: "bow",    stats: { atk: 7 },          cost: { wood: 3, fang: 2 } },
+  { id: "w_guard_dagger",name: "守人の短剣",    icon: "🔪",  type: "weapon", wtype: "dagger", stats: { atk: 7 },          cost: { stone: 3, fang: 2 } },
+  { id: "w_ember_staff", name: "灯火の杖",      icon: "🪄",  type: "weapon", wtype: "staff",  element: "fire", stats: { atk: 7, mp: 6 }, cost: { wood: 2, shard: 3 } },
+
+  { id: "w_iron_sword",  name: "鉄の剣",        icon: "⚔️", type: "weapon", wtype: "sword",  stats: { atk: 16 },         cost: { iron: 4, hardwood: 2, fang: 2 } },
+  { id: "w_war_axe",     name: "戦鬼の大斧",    icon: "🪓",  type: "weapon", wtype: "axe",    stats: { atk: 22 },         cost: { iron: 5, hardwood: 3 } },
+  { id: "w_assassin",    name: "暗殺者の短剣",  icon: "🔪",  type: "weapon", wtype: "dagger", stats: { atk: 16 },         cost: { iron: 3, shard: 4 } },
+  { id: "w_flame_sword", name: "紅蓮の剣",      icon: "🗡️", type: "weapon", wtype: "sword",  element: "fire", stats: { atk: 20 }, cost: { iron: 3, crystal: 1, shard: 3 } },
+  { id: "w_frost_spear", name: "氷牙の槍",      icon: "🔱",  type: "weapon", wtype: "spear",  element: "ice",  stats: { atk: 20 }, cost: { iron: 3, crystal: 2 } },
+  { id: "w_thunder_bow", name: "雷鳴の弓",      icon: "🏹",  type: "weapon", wtype: "bow",    element: "lightning", stats: { atk: 18 }, cost: { hardwood: 3, crystal: 2, fang: 3 } },
+  { id: "w_sage_staff",  name: "賢者の杖",      icon: "🪄",  type: "weapon", wtype: "staff",  element: "ice",  stats: { atk: 24, mp: 14 }, cost: { crystal: 2, shard: 4, hardwood: 2 } },
+
+  { id: "w_dragon_sword",name: "竜殺しの大剣",  icon: "⚔️", type: "weapon", wtype: "sword",  element: "fire", stats: { atk: 46 }, cost: { mithril: 3, crystal: 3, fang: 5 } },
+  { id: "w_storm_spear", name: "雷帝の槍",      icon: "🔱",  type: "weapon", wtype: "spear",  element: "lightning", stats: { atk: 40 }, cost: { mithril: 3, crystal: 2, iron: 4 } },
+
   // --- 防具 ---
-  { id: "a_leather", name: "革の鎧", icon: "🦺", type: "armor", stats: { def: 4, hp: 10 },
-    cost: { pelt: 4 }, desc: "DEF +4 / 最大HP +10" },
-  { id: "a_stone", name: "石板の鎧", icon: "🛡️", type: "armor", stats: { def: 9, hp: 20 },
-    cost: { stone: 6, pelt: 3 }, desc: "DEF +9 / 最大HP +20" },
-  { id: "a_iron", name: "鉄の鎧", icon: "🛡️", type: "armor", stats: { def: 16, hp: 35 },
-    cost: { iron: 6, pelt: 4 }, desc: "DEF +16 / 最大HP +35" },
-  { id: "a_crystal", name: "クリスタルメイル", icon: "🛡️", type: "armor", stats: { def: 26, hp: 60 },
-    cost: { iron: 4, crystal: 2, shard: 4 }, desc: "DEF +26 / 最大HP +60" },
-  { id: "a_dragon", name: "竜鱗の鎧", icon: "🛡️", type: "armor", stats: { def: 40, hp: 100 },
-    cost: { mithril: 4, crystal: 2, pelt: 6 }, desc: "DEF +40 / 最大HP +100" },
+  { id: "a_leather", name: "革の鎧",       icon: "🦺", type: "armor", stats: { def: 4, hp: 10 },        cost: { pelt: 4 }, desc: "DEF +4 / 最大HP +10" },
+  { id: "a_novice_robe", name: "見習いのローブ", icon: "🥋", type: "armor", stats: { def: 2, hp: 5, mp: 8 }, cost: { gel: 3, wood: 2 }, desc: "DEF +2 / HP +5 / MP +8" },
+  { id: "a_stone", name: "石板の鎧",       icon: "🛡️", type: "armor", stats: { def: 9, hp: 20 },       cost: { stone: 6, pelt: 3 }, desc: "DEF +9 / 最大HP +20" },
+  { id: "a_iron", name: "鉄の鎧",          icon: "🛡️", type: "armor", stats: { def: 16, hp: 35 },      cost: { iron: 6, pelt: 4 }, desc: "DEF +16 / 最大HP +35" },
+  { id: "a_mage_robe", name: "魔導のローブ", icon: "🥻", type: "armor", stats: { def: 10, hp: 25, mp: 20 }, cost: { shard: 6, pelt: 3, crystal: 1 }, desc: "DEF +10 / HP +25 / MP +20" },
+  { id: "a_crystal", name: "クリスタルメイル", icon: "🛡️", type: "armor", stats: { def: 26, hp: 60 },  cost: { iron: 4, crystal: 2, shard: 4 }, desc: "DEF +26 / 最大HP +60" },
+  { id: "a_dragon", name: "竜鱗の鎧",      icon: "🛡️", type: "armor", stats: { def: 40, hp: 100 },     cost: { mithril: 4, crystal: 2, pelt: 6 }, desc: "DEF +40 / 最大HP +100" },
 ];
+
+// 武器・防具の効果説明を自動生成
+function gearEffectText(r) {
+  if (r.type === "weapon") {
+    const w = WTYPES[r.wtype] || WTYPES.fist;
+    const parts = [`ATK +${r.stats.atk}`];
+    if (r.stats.mp) parts.push(`MP +${r.stats.mp}`);
+    let line = `${w.name}${r.element ? " / " + elemLabel(r.element) : ""} ・ ${parts.join(" / ")}`;
+    return line + `（${w.note}）`;
+  }
+  return r.desc || "";
+}
 
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map(r => [r.id, r]));
 
 /* ---------- セーブ＆ステート ---------- */
-
-const SAVE_KEY = "fantasy-life-save-v1";
-
-const BASE_STATS = { atk: 5, def: 2, maxHp: 30 };
+const SAVE_KEY = "fantasy-life-save-v2";
+const BASE_STATS = { atk: 5, def: 2, maxHp: 30, maxMp: 10 };
 
 function newGame() {
   return {
-    level: 1,
-    exp: 0,
-    hp: BASE_STATS.maxHp,
-    gold: 0,
-    materials: {},          // {matId: qty}
-    owned: [],              // 作成済み装備・道具のレシピid配列
+    level: 1, exp: 0, hp: BASE_STATS.maxHp, mp: BASE_STATS.maxMp, gold: 0,
+    materials: {}, owned: [],
     equipped: { weapon: null, armor: null, axe: null, pickaxe: null },
     currentGatherArea: "grassland",
   };
 }
 
 let state = loadGame();
-let battle = null; // 戦闘中の一時状態
+let battle = null;
 
 function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) return Object.assign(newGame(), JSON.parse(raw));
-  } catch (e) { /* ignore */ }
+  } catch (e) {}
   return newGame();
 }
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {} }
 
-function save() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
-}
-
-/* ---------- 計算系ヘルパー ---------- */
-
+/* ---------- 計算ヘルパー ---------- */
 function expToNext(level) { return Math.floor(10 * Math.pow(level, 1.5)); }
 
 function derivedStats() {
-  let atk = BASE_STATS.atk;
-  let def = BASE_STATS.def;
-  let maxHp = BASE_STATS.maxHp;
-  // レベルボーナス
-  atk += (state.level - 1) * 2;
-  def += (state.level - 1) * 1;
-  maxHp += (state.level - 1) * 8;
-  // 装備ボーナス
+  let atk = BASE_STATS.atk + (state.level - 1) * 2;
+  let def = BASE_STATS.def + (state.level - 1) * 1;
+  let maxHp = BASE_STATS.maxHp + (state.level - 1) * 8;
+  let maxMp = BASE_STATS.maxMp + (state.level - 1) * 2;
   for (const slot of ["weapon", "armor"]) {
     const id = state.equipped[slot];
     if (id && RECIPE_BY_ID[id]) {
       const s = RECIPE_BY_ID[id].stats || {};
-      atk += s.atk || 0;
-      def += s.def || 0;
-      maxHp += s.hp || 0;
+      atk += s.atk || 0; def += s.def || 0; maxHp += s.hp || 0; maxMp += s.mp || 0;
     }
   }
-  return { atk, def, maxHp };
+  return { atk, def, maxHp, maxMp };
 }
 
-function toolTier(kind) { // kind = axe/pickaxe
+function equippedWeapon() {
+  const id = state.equipped.weapon;
+  return id ? RECIPE_BY_ID[id] : null;
+}
+function weaponType() {
+  const w = equippedWeapon();
+  return (w && WTYPES[w.wtype]) ? WTYPES[w.wtype] : WTYPES.fist;
+}
+function weaponElement() {
+  const w = equippedWeapon();
+  return w ? (w.element || null) : null;
+}
+function toolTier(kind) {
   const id = state.equipped[kind];
-  if (id && RECIPE_BY_ID[id]) return RECIPE_BY_ID[id].tier;
-  return 0; // 素手
+  return (id && RECIPE_BY_ID[id]) ? RECIPE_BY_ID[id].tier : 0;
 }
 
 function matQty(id) { return state.materials[id] || 0; }
 function addMat(id, n) { state.materials[id] = matQty(id) + n; }
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function clampVitals() {
+  const s = derivedStats();
+  if (state.hp == null) state.hp = s.maxHp;
+  if (state.mp == null) state.mp = s.maxMp;
+  state.hp = Math.min(state.hp, s.maxHp);
+  state.mp = Math.min(state.mp, s.maxMp);
+}
 
 /* ---------- ログ＆トースト ---------- */
-
 function log(msg, cls = "") {
   const el = document.getElementById("log");
   const line = document.createElement("div");
@@ -226,7 +259,6 @@ function log(msg, cls = "") {
   el.prepend(line);
   while (el.children.length > 60) el.removeChild(el.lastChild);
 }
-
 let toastTimer = null;
 function toast(msg) {
   let t = document.querySelector(".toast");
@@ -240,103 +272,221 @@ function toast(msg) {
 }
 
 /* ---------- 経験値・レベルアップ ---------- */
-
 function gainExp(amount) {
   state.exp += amount;
   let leveled = false;
-  while (state.exp >= expToNext(state.level)) {
-    state.exp -= expToNext(state.level);
-    state.level++;
-    leveled = true;
-  }
+  while (state.exp >= expToNext(state.level)) { state.exp -= expToNext(state.level); state.level++; leveled = true; }
   if (leveled) {
-    state.hp = derivedStats().maxHp; // レベルアップで全回復
-    log(`🎉 レベルアップ！ Lv.${state.level} になった（HP全回復）`, "l-good");
+    const s = derivedStats();
+    state.hp = s.maxHp; state.mp = s.maxMp;
+    log(`🎉 レベルアップ！ Lv.${state.level} になった（HP/MP全回復）`, "l-good");
     toast(`Lv.${state.level} に上がった！`);
-    checkAreaUnlocks();
-  }
-}
-
-let unlockedSnapshot = new Set();
-function checkAreaUnlocks() {
-  for (const a of AREAS) {
-    if (state.level >= a.reqLevel && !unlockedSnapshot.has(a.id)) {
-      unlockedSnapshot.add(a.id);
-    }
   }
 }
 
 /* ---------- 採集 ---------- */
-
 function gather(areaId, nodeId) {
   const area = AREAS.find(a => a.id === areaId);
   const node = area.nodes.find(n => n.id === nodeId);
   const have = toolTier(node.tool);
+  const toolName = node.tool === "axe" ? "斧" : "ピッケル";
   if (have < node.tier) {
-    const toolName = node.tool === "axe" ? "斧" : "ピッケル";
     toast(`もっと良い${toolName}が必要だ`);
-    log(`${node.name} には ランク${node.tier} 以上の${node.tool === "axe" ? "斧" : "ピッケル"}が必要。`, "l-bad");
+    log(`${node.name} には ランク${node.tier} 以上の${toolName}が必要。`, "l-bad");
     return;
   }
-  // 道具ランクが高いほどボーナス
-  const bonus = have - node.tier; // 0以上
+  const bonus = have - node.tier;
   let got = [];
   for (const y of node.yields) {
     if (Math.random() <= y.chance) {
-      let amount = rand(y.min, y.max) + Math.floor(bonus * 0.7);
+      const amount = rand(y.min, y.max) + Math.floor(bonus * 0.7);
       addMat(y.mat, amount);
       got.push(`${MATERIALS[y.mat].icon}${MATERIALS[y.mat].name} ×${amount}`);
     }
   }
-  if (got.length) {
-    log(`⛏ ${node.name}から ${got.join(" / ")} を採集した。`, "l-good");
-    gainExp(2);
-  } else {
-    log(`${node.name}からは何も採れなかった…`, "l-sys");
-  }
-  save();
-  renderAll();
+  if (got.length) { log(`⛏ ${node.name}から ${got.join(" / ")} を採集した。`, "l-good"); gainExp(2); }
+  else log(`${node.name}からは何も採れなかった…`, "l-sys");
+  save(); renderAll();
 }
 
-/* ---------- 戦闘 ---------- */
+/* =========================================================
+   戦闘
+   ========================================================= */
 
 function startBattle(areaId) {
   const area = AREAS.find(a => a.id === areaId);
   const m = area.monsters[rand(0, area.monsters.length - 1)];
+  const s = derivedStats();
+  // 戦闘開始時は HP/MP 全回復（1戦ごとに仕切り直し）
+  state.hp = s.maxHp; state.mp = s.maxMp;
   battle = {
     areaId,
-    enemy: { ...m, maxHp: m.hp, hp: m.hp },
-    over: false,
+    enemy: { ...m, maxHp: m.hp, hp: m.hp, statuses: [] },
+    defending: false, over: false, showSkills: false, busy: false,
   };
-  log(`⚔ ${m.name} が現れた！`, "l-sys");
-  renderBattle();
+  log(`⚔ ${m.name}（弱点: ${elemLabel(m.weak)}）が現れた！`, "l-sys");
   document.getElementById("area-list").classList.add("hidden");
-}
-
-function playerAttack() {
-  if (!battle || battle.over) return;
-  const ps = derivedStats();
-  const e = battle.enemy;
-  // プレイヤーの攻撃
-  let dmg = Math.max(1, ps.atk - e.def + rand(-2, 2));
-  e.hp = Math.max(0, e.hp - dmg);
-  log(`${e.name} に ${dmg} ダメージ！`, "l-good");
-  if (e.hp <= 0) { winBattle(); return; }
-  // 敵の反撃
-  let edmg = Math.max(1, e.atk - ps.def + rand(-2, 2));
-  state.hp = Math.max(0, state.hp - edmg);
-  log(`${e.name} の反撃！ ${edmg} ダメージを受けた。`, "l-bad");
-  if (state.hp <= 0) { loseBattle(); return; }
   renderBattle();
   renderStatus();
-  save();
+}
+
+// 1ヒットを敵に与える
+function dealHit(opts) {
+  const e = battle.enemy;
+  if (e.hp <= 0) return;
+  const ps = derivedStats();
+  const wt = weaponType();
+  const mult = opts.mult != null ? opts.mult : 1;
+  let def = e.def;
+  if (opts.ignoreDef || wt.ignoreDef) def = 0;
+  else def = def * (1 - (opts.pierce || 0) - (wt.pierce || 0));
+  def = Math.max(0, def);
+
+  let dmg = ps.atk * mult - def;
+
+  // 属性の弱点
+  const elem = weaponElement();
+  let weak = false;
+  if (elem && e.weak === elem) { dmg *= 1.5; weak = true; }
+
+  // 会心
+  const critChance = (wt.crit || 0) + (opts.critBonus || 0);
+  const crit = Math.random() < critChance;
+  if (crit) dmg *= 1.8;
+
+  dmg = Math.max(1, Math.round(dmg + rand(-2, 2)));
+  e.hp = Math.max(0, e.hp - dmg);
+
+  let tag = "";
+  if (crit) tag += " ✨会心！";
+  if (weak) tag += ` ${elemLabel(elem)}弱点！`;
+  log(`${e.name} に ${dmg} ダメージ！${tag}`, crit || weak ? "l-good" : "");
+
+  // 状態異常付与
+  if (opts.inflict) applyStatus(e, opts.inflict);
+  if (wt.onCritStatus && crit) applyStatus(e, wt.onCritStatus);
+  if (elem) {
+    const chance = opts.forceStatus ? 1 : 0.25;
+    if (Math.random() < chance) applyStatus(e, elementStatus(elem), ps.atk);
+  }
+}
+
+function elementStatus(elem) {
+  if (elem === "fire") return "burn";
+  return "stun"; // ice / lightning
+}
+
+// 状態異常を付与
+function applyStatus(enemy, kind, atkRef) {
+  const ps = derivedStats();
+  const atk = atkRef || ps.atk;
+  if (kind === "poison" || kind === "burn") {
+    const dmg = Math.max(2, Math.round(atk * (kind === "poison" ? 0.25 : 0.2)));
+    const turns = 3;
+    const ex = enemy.statuses.find(s => s.kind === kind);
+    if (ex) { ex.turns = Math.max(ex.turns, turns); ex.dmg = Math.max(ex.dmg, dmg); }
+    else enemy.statuses.push({ kind, dmg, turns });
+    log(`${enemy.name} は${kind === "poison" ? "毒" : "火傷"}を負った！`, "l-good");
+  } else if (kind === "stun") {
+    const ex = enemy.statuses.find(s => s.kind === "stun");
+    if (ex) ex.turns = Math.max(ex.turns, 1);
+    else enemy.statuses.push({ kind: "stun", turns: 1 });
+    log(`${enemy.name} は痺れて動けなくなった！`, "l-good");
+  }
+}
+
+function playerHeal(frac) {
+  const s = derivedStats();
+  const amt = Math.round(s.maxHp * frac);
+  state.hp = Math.min(s.maxHp, state.hp + amt);
+  log(`💚 ${amt} 回復した。`, "l-good");
+}
+
+// 戦闘コンテキスト（スキルから呼ぶ）
+const combatCtx = {
+  hit: (opts) => dealHit(opts || {}),
+  heal: (frac) => playerHeal(frac),
+};
+
+// 通常攻撃
+function actAttack() {
+  if (!battle || battle.over || battle.busy) return;
+  const wt = weaponType();
+  const hits = wt.hits || 1;
+  for (let i = 0; i < hits; i++) dealHit({});
+  finishPlayerAction();
+}
+
+// スキル使用
+function actSkill(skillId) {
+  if (!battle || battle.over || battle.busy) return;
+  const sk = SKILLS[skillId];
+  if (!sk) return;
+  if (state.mp < sk.mp) { toast("MPが足りない"); return; }
+  state.mp -= sk.mp;
+  log(`${sk.icon} ${sk.name} を放った！`, "l-sys");
+  sk.run(combatCtx);
+  battle.showSkills = false;
+  finishPlayerAction();
+}
+
+// 防御
+function actDefend() {
+  if (!battle || battle.over || battle.busy) return;
+  battle.defending = true;
+  const s = derivedStats();
+  state.mp = Math.min(s.maxMp, state.mp + 5);
+  log(`🛡 身を守る体勢をとった（被ダメ減＆MP回復）。`, "l-sys");
+  finishPlayerAction();
+}
+
+// プレイヤー行動後 → 勝敗判定 → 敵ターン
+function finishPlayerAction() {
+  if (battle.enemy.hp <= 0) { winBattle(); return; }
+  enemyTurn();
+}
+
+function enemyTurn() {
+  const e = battle.enemy;
+  // 状態異常（毒/火傷）のダメージ
+  for (const st of [...e.statuses]) {
+    if (st.kind === "poison" || st.kind === "burn") {
+      e.hp = Math.max(0, e.hp - st.dmg);
+      log(`${e.name} は${st.kind === "poison" ? "毒" : "火傷"}で ${st.dmg} ダメージ。`, "l-good");
+      st.turns--;
+    }
+  }
+  e.statuses = e.statuses.filter(s => !((s.kind === "poison" || s.kind === "burn") && s.turns <= 0));
+  if (e.hp <= 0) { winBattle(); return; }
+
+  // スタン判定
+  const stun = e.statuses.find(s => s.kind === "stun");
+  if (stun) {
+    log(`${e.name} は痺れて動けない！`, "l-good");
+    stun.turns--;
+    e.statuses = e.statuses.filter(s => !(s.kind === "stun" && s.turns <= 0));
+  } else {
+    // 敵の攻撃
+    const ps = derivedStats();
+    let edmg = Math.max(1, e.atk - ps.def + rand(-2, 2));
+    if (battle.defending) edmg = Math.max(1, Math.round(edmg * 0.4));
+    state.hp = Math.max(0, state.hp - edmg);
+    log(`${e.name} の攻撃！ ${edmg} ダメージを受けた。`, "l-bad");
+    if (state.hp <= 0) { loseBattle(); return; }
+  }
+
+  // MP自然回復＆防御解除
+  const s = derivedStats();
+  state.mp = Math.min(s.maxMp, state.mp + 2);
+  battle.defending = false;
+
+  renderBattle(); renderStatus(); save();
 }
 
 function winBattle() {
   const e = battle.enemy;
   battle.over = true;
   log(`✨ ${e.name} を倒した！`, "l-good");
-  // ドロップ
   let drops = [];
   for (const d of e.drops || []) {
     if (Math.random() <= d.chance) {
@@ -356,12 +506,12 @@ function winBattle() {
 
 function loseBattle() {
   battle.over = true;
-  log(`💀 倒れてしまった…拠点に戻り、HPが回復した。`, "l-bad");
-  state.hp = derivedStats().maxHp;
-  // ペナルティ：所持ゴールドの一部
+  log(`💀 倒れてしまった…拠点に戻った。`, "l-bad");
   const lost = Math.floor(state.gold * 0.2);
   state.gold -= lost;
   if (lost > 0) log(`動揺して ${lost}G を落とした。`, "l-gold");
+  const s = derivedStats();
+  state.hp = s.maxHp; state.mp = s.maxMp;
   toast("やられてしまった…");
   save();
   endBattleUI();
@@ -370,7 +520,6 @@ function loseBattle() {
 function fleeBattle() {
   if (!battle) return;
   log(`🏃 ${battle.enemy.name} から逃げ出した。`, "l-sys");
-  battle = null;
   endBattleUI();
 }
 
@@ -382,10 +531,7 @@ function endBattleUI() {
 }
 
 /* ---------- 作成 ---------- */
-
-function canCraft(recipe) {
-  return Object.entries(recipe.cost).every(([m, q]) => matQty(m) >= q);
-}
+function canCraft(recipe) { return Object.entries(recipe.cost).every(([m, q]) => matQty(m) >= q); }
 
 function craft(recipeId) {
   const r = RECIPE_BY_ID[recipeId];
@@ -394,43 +540,42 @@ function craft(recipeId) {
   if (!state.owned.includes(recipeId)) state.owned.push(recipeId);
   log(`🔨 ${r.name} を作成した！`, "l-good");
   toast(`${r.name} を作った！`);
-  // 道具・装備は作ったら自動装備（より強ければ）
   autoEquipIfBetter(r);
   gainExp(5);
-  save();
-  renderAll();
+  save(); renderAll();
 }
 
+function gearScore(r) {
+  const s = r.stats || {};
+  return (r.tier || 0) * 100 + (s.atk || 0) + (s.def || 0) + (s.hp || 0) * 0.3 + (s.mp || 0) * 0.3;
+}
 function autoEquipIfBetter(r) {
-  const slot = r.type === "weapon" ? "weapon"
-            : r.type === "armor" ? "armor"
-            : r.type; // axe / pickaxe
+  const slot = r.type === "weapon" ? "weapon" : r.type === "armor" ? "armor" : r.type;
   const cur = state.equipped[slot];
-  if (!cur) { state.equipped[slot] = r.id; return; }
-  const curR = RECIPE_BY_ID[cur];
-  const score = x => (x.tier || 0) * 100 + (x.stats?.atk || 0) + (x.stats?.def || 0) + (x.stats?.hp || 0);
-  if (score(r) > score(curR)) state.equipped[slot] = r.id;
+  if (!cur) { state.equipped[slot] = r.id; clampVitals(); return; }
+  if (gearScore(r) > gearScore(RECIPE_BY_ID[cur])) { state.equipped[slot] = r.id; clampVitals(); }
 }
-
 function equipItem(recipeId) {
   const r = RECIPE_BY_ID[recipeId];
   const slot = r.type === "weapon" ? "weapon" : r.type === "armor" ? "armor" : r.type;
   state.equipped[slot] = recipeId;
-  // HPが最大を超えないよう調整
-  state.hp = Math.min(state.hp, derivedStats().maxHp);
+  clampVitals();
   log(`${r.name} を装備した。`, "l-sys");
-  save();
-  renderAll();
+  save(); renderAll();
 }
 
-/* ---------- レンダリング ---------- */
+/* =========================================================
+   レンダリング
+   ========================================================= */
 
 function renderStatus() {
+  clampVitals();
   const s = derivedStats();
-  state.hp = Math.min(state.hp, s.maxHp);
   document.getElementById("stat-level").textContent = state.level;
   document.getElementById("stat-hp").textContent = `${state.hp}/${s.maxHp}`;
   document.getElementById("hp-fill").style.width = (state.hp / s.maxHp * 100) + "%";
+  document.getElementById("stat-mp").textContent = `${state.mp}/${s.maxMp}`;
+  document.getElementById("mp-fill").style.width = (state.mp / s.maxMp * 100) + "%";
   const need = expToNext(state.level);
   document.getElementById("stat-exp").textContent = `${state.exp}/${need}`;
   document.getElementById("exp-fill").style.width = (state.exp / need * 100) + "%";
@@ -461,19 +606,32 @@ function renderAreas() {
   }
 }
 
+function statusIcons(enemy) {
+  return enemy.statuses.map(s => {
+    if (s.kind === "poison") return `🟢×${s.turns}`;
+    if (s.kind === "burn") return `🔥×${s.turns}`;
+    if (s.kind === "stun") return `💫`;
+    return "";
+  }).join(" ");
+}
+
 function renderBattle() {
   const wrap = document.getElementById("battle");
   if (!battle) { wrap.classList.add("hidden"); return; }
   wrap.classList.remove("hidden");
   const s = derivedStats();
   const e = battle.enemy;
+  const wt = weaponType();
+  const elem = weaponElement();
+
   wrap.innerHTML = `
     <div class="combatants">
       <div class="fighter player">
         <div class="sprite">🧑‍🌾</div>
         <div class="fname">あなた</div>
         <div class="fbar"><div style="width:${state.hp / s.maxHp * 100}%"></div></div>
-        <div class="sub">HP ${state.hp}/${s.maxHp}</div>
+        <div class="sub">HP ${state.hp}/${s.maxHp}　MP ${state.mp}/${s.maxMp}</div>
+        <div class="sub wmeta">${wt.name}${elem ? " " + elemLabel(elem) : ""}</div>
       </div>
       <div class="vs">VS</div>
       <div class="fighter enemy">
@@ -481,18 +639,54 @@ function renderBattle() {
         <div class="fname">${e.name}</div>
         <div class="fbar"><div style="width:${e.hp / e.maxHp * 100}%"></div></div>
         <div class="sub">HP ${e.hp}/${e.maxHp}</div>
+        <div class="sub">弱点 ${elemLabel(e.weak)} ${statusIcons(e)}</div>
       </div>
     </div>
-    <div class="battle-actions">
-      <button class="action" id="btn-attack">⚔ 攻撃する</button>
-      <button class="action secondary" id="btn-flee">🏃 逃げる</button>
-    </div>`;
-  document.getElementById("btn-attack").onclick = playerAttack;
-  document.getElementById("btn-flee").onclick = fleeBattle;
+    <div class="battle-actions" id="battle-actions"></div>`;
+
+  const actions = document.getElementById("battle-actions");
+
+  if (battle.showSkills) {
+    const skills = wt.skills || [];
+    if (skills.length === 0) {
+      const note = document.createElement("div");
+      note.className = "empty-note";
+      note.textContent = "この武器で使えるスキルはない。";
+      actions.appendChild(note);
+    }
+    for (const sid of skills) {
+      const sk = SKILLS[sid];
+      const b = document.createElement("button");
+      b.className = "action skill-btn";
+      b.disabled = state.mp < sk.mp;
+      b.innerHTML = `${sk.icon} ${sk.name} <span class="mpcost">MP${sk.mp}</span><span class="skdesc">${sk.desc}</span>`;
+      b.onclick = () => actSkill(sid);
+      actions.appendChild(b);
+    }
+    const back = document.createElement("button");
+    back.className = "action secondary";
+    back.textContent = "↩ 戻る";
+    back.onclick = () => { battle.showSkills = false; renderBattle(); };
+    actions.appendChild(back);
+  } else {
+    const mk = (label, fn, cls = "action") => {
+      const b = document.createElement("button");
+      b.className = cls;
+      b.textContent = label;
+      b.onclick = fn;
+      return b;
+    };
+    actions.appendChild(mk("⚔ 攻撃", actAttack));
+    const hasSkill = (wt.skills || []).length > 0;
+    const sb = mk("✨ スキル", () => { battle.showSkills = true; renderBattle(); });
+    sb.disabled = !hasSkill;
+    actions.appendChild(sb);
+    actions.appendChild(mk("🛡 防御", actDefend, "action secondary"));
+    actions.appendChild(mk("🏃 逃げる", fleeBattle, "action secondary"));
+  }
 }
 
 function renderGather() {
-  // エリアチップ
   const chipRow = document.getElementById("gather-area-list");
   chipRow.innerHTML = "";
   for (const a of AREAS) {
@@ -503,7 +697,6 @@ function renderGather() {
     if (!locked) chip.onclick = () => { state.currentGatherArea = a.id; save(); renderGather(); };
     chipRow.appendChild(chip);
   }
-  // ノード
   const grid = document.getElementById("gather-nodes");
   grid.innerHTML = "";
   const area = AREAS.find(a => a.id === state.currentGatherArea);
@@ -547,8 +740,8 @@ function renderCraft() {
     card.innerHTML = `
       <div class="gicon">${r.icon}</div>
       <div class="rinfo">
-        <h4>${r.name} <span style="color:var(--muted);font-size:11px;font-weight:400">[${typeLabel}]</span></h4>
-        <div class="effect">${r.desc}${owned ? "　✔作成済み" : ""}</div>
+        <h4>${r.name} <span class="ttag">[${typeLabel}]</span></h4>
+        <div class="effect">${gearEffectText(r)}${owned ? "　✔作成済み" : ""}</div>
         <div class="cost">${costStr}</div>
       </div>`;
     const btn = document.createElement("button");
@@ -563,24 +756,21 @@ function renderCraft() {
 
 function renderEquip() {
   const slots = [
-    { key: "weapon", label: "武器" },
-    { key: "armor", label: "防具" },
-    { key: "axe", label: "斧" },
-    { key: "pickaxe", label: "ピッケル" },
+    { key: "weapon", label: "武器" }, { key: "armor", label: "防具" },
+    { key: "axe", label: "斧" }, { key: "pickaxe", label: "ピッケル" },
   ];
   const wrap = document.getElementById("equip-slots");
   wrap.innerHTML = "";
-  for (const s of slots) {
-    const id = state.equipped[s.key];
+  for (const sl of slots) {
+    const id = state.equipped[sl.key];
     const r = id ? RECIPE_BY_ID[id] : null;
     const div = document.createElement("div");
     div.className = "slot";
     div.innerHTML = `
-      <div class="slot-name">${s.label}</div>
+      <div class="slot-name">${sl.label}</div>
       <div class="slot-item ${r ? "" : "empty"}">${r ? r.icon + " " + r.name : "なし"}</div>`;
     wrap.appendChild(div);
   }
-  // 所持装備
   const gearWrap = document.getElementById("owned-gear");
   gearWrap.innerHTML = "";
   if (state.owned.length === 0) {
@@ -597,7 +787,7 @@ function renderEquip() {
       <div class="gicon">${r.icon}</div>
       <div class="ginfo">
         <h4>${r.name}</h4>
-        <div class="effect">${r.desc}</div>
+        <div class="effect">${gearEffectText(r)}</div>
       </div>`;
     if (equipped) {
       const tag = document.createElement("span");
@@ -623,7 +813,6 @@ function renderBag() {
     wrap.innerHTML = `<div class="empty-note">素材を持っていない。「採集」や「探索」で集めよう。</div>`;
     return;
   }
-  // MATERIALS定義順で表示
   for (const mid of Object.keys(MATERIALS)) {
     const q = matQty(mid);
     if (q <= 0) continue;
@@ -638,17 +827,11 @@ function renderBag() {
 }
 
 function renderAll() {
-  renderStatus();
-  renderAreas();
-  renderBattle();
-  renderGather();
-  renderCraft();
-  renderEquip();
-  renderBag();
+  renderStatus(); renderAreas(); renderBattle();
+  renderGather(); renderCraft(); renderEquip(); renderBag();
 }
 
 /* ---------- タブ切替 ---------- */
-
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -659,19 +842,15 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 });
 
 /* ---------- リセット ---------- */
-
 document.getElementById("reset-btn").onclick = () => {
   if (confirm("本当に最初からやり直しますか？セーブデータは消えます。")) {
-    state = newGame();
-    battle = null;
-    save();
+    state = newGame(); battle = null; save();
     log("ゲームをリセットした。", "l-sys");
     renderAll();
   }
 };
 
 /* ---------- 起動 ---------- */
-
-checkAreaUnlocks();
+clampVitals();
 renderAll();
-log("ようこそ！まずは『採集』で木と石を集め、『作成』で道具と武器を作ろう。", "l-sys");
+log("ようこそ！まず『採集』で素材を集め、『作成』で武器や道具を作ろう。武器の種類で戦い方が変わるぞ。", "l-sys");
