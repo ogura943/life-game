@@ -54,6 +54,7 @@
     <button class="tab-btn" data-tab="craft">🔨 作成</button>
     <button class="tab-btn" data-tab="equip">🎽 装備</button>
     <button class="tab-btn" data-tab="shop">🛒 店</button>
+    <button class="tab-btn" data-tab="record">📖 記録</button>
     <button class="tab-btn" data-tab="bag">🎒 持ち物</button>
   </nav>
 
@@ -96,12 +97,25 @@
       <div id="shop-consumable" class="recipe-list"></div>
       <h3>永続強化の種</h3>
       <div id="shop-perm" class="recipe-list"></div>
+      <h3>素材を売る</h3>
+      <div id="shop-sell" class="recipe-list"></div>
+    </section>
+
+    <!-- 記録（クエスト＆図鑑） -->
+    <section id="tab-record" class="tab-panel">
+      <h2>クエスト</h2>
+      <p class="hint">条件を満たすと報酬がもらえる。達成したら「受取」しよう。</p>
+      <div id="quest-list" class="recipe-list"></div>
+      <h2 style="margin-top:20px">モンスター図鑑</h2>
+      <div id="dex-list" class="dex-list"></div>
     </section>
 
     <!-- 持ち物 -->
     <section id="tab-bag" class="tab-panel">
       <h2>持ち物（素材）</h2>
       <div id="material-list" class="material-list"></div>
+      <h3>設定</h3>
+      <div id="settings-box"></div>
       <button id="reset-btn" class="danger-btn">最初からやり直す</button>
     </section>
   </main>
@@ -117,9 +131,17 @@
   <button id="install-close" class="install-x" aria-label="閉じる">✕</button>
 </div>
 
+<script src="audio.js"></script>
 <script src="sprites.js"></script>
 <script src="game.js"></script>
 <script>
+/* ---- 初回タップで音を有効化＆BGM開始 ---- */
+window.addEventListener("pointerdown", function once() {
+  if (typeof audioCtx === "function") { const a = audioCtx(); if (a && a.state === "suspended") a.resume(); }
+  if (typeof startBgm === "function") startBgm();
+  window.removeEventListener("pointerdown", once);
+}, { once: true });
+
 /* ---- PWA: Service Worker 登録 ---- */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

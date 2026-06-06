@@ -247,6 +247,60 @@ button.secondary { background: var(--panel-2); color: var(--text); }
 .skill-btn:disabled .mpcost { color: var(--danger); }
 .ttag { color: var(--muted); font-size: 11px; font-weight: 400; }
 .vs { align-self: center; color: var(--muted); font-weight: 700; }
+
+/* --- 戦闘演出：ダメージポップ・シェイク・フラッシュ --- */
+.fighter { position: relative; }
+.dmg-pop {
+  position: absolute;
+  top: 38px; left: 50%;
+  transform: translateX(-50%);
+  font-weight: 800;
+  font-size: 22px;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,.6);
+  pointer-events: none;
+  animation: pop .7s ease-out forwards;
+  z-index: 5;
+}
+.dmg-pop.crit { color: #ffe14d; font-size: 27px; }
+.dmg-pop.weak { color: #8af0ff; }
+.dmg-pop.heal { color: #7fe199; }
+@keyframes pop { 0%{opacity:1; transform:translate(-50%,0) scale(.7);} 30%{transform:translate(-50%,-10px) scale(1.15);} 100%{opacity:0; transform:translate(-50%,-34px) scale(1);} }
+.shake { animation: shake .32s ease-in-out; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
+#battle.flash { animation: flash .26s ease-out; }
+@keyframes flash { 0%{box-shadow:inset 0 0 0 2000px rgba(224,108,117,.35);} 100%{box-shadow:inset 0 0 0 2000px rgba(224,108,117,0);} }
+
+.repeat-btn { width: 100%; margin-bottom: 4px; background: var(--panel-2); color: var(--text); }
+
+/* --- フィルタ・トグル行 --- */
+.filter-row { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; padding: 6px 2px; cursor: pointer; }
+.filter-row input { width: 16px; height: 16px; }
+
+/* --- 強化・装飾 --- */
+.gear-card { flex-wrap: wrap; }
+.gear-btns { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.enh { color: var(--accent-2); font-weight: 800; }
+.enh-btn { display: flex; flex-direction: column; align-items: center; line-height: 1.2; padding: 7px 12px; }
+.enh-btn .enh-cost { font-size: 10px; font-weight: 600; opacity: .9; }
+.enh-max { color: var(--accent-2); font-weight: 800; font-size: 13px; }
+
+/* --- 素材売却 --- */
+.sell-btns { display: flex; gap: 6px; }
+.sell-btns .action { padding: 8px 12px; }
+
+/* --- クエスト --- */
+.quest-bar { height: 8px; margin-top: 6px; }
+
+/* --- 図鑑 --- */
+.dex-list { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 10px; }
+.dex-card { background: var(--panel); border: 1px solid #333a4f; border-radius: 12px; padding: 10px; display: flex; gap: 8px; align-items: center; }
+.dex-card.unknown { opacity: .55; }
+.dex-sprite { width: 48px; height: 48px; flex-shrink: 0; }
+.dex-sprite .sprite-inner { width: 48px; height: 48px; animation: none; }
+.dex-q { display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--muted); }
+.dex-info h4 { margin: 0 0 2px; font-size: 13px; }
+.dex-info .sub { font-size: 10px; color: var(--muted); line-height: 1.4; }
 .dmg-pop { animation: pop .5s ease-out; }
 @keyframes pop { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-18px);opacity:0} }
 

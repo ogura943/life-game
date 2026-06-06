@@ -191,8 +191,28 @@ const RECIPES = [
   { id: "a_crystal", name: "クリスタルメイル", icon: "🛡️", type: "armor", stats: { def: 26, hp: 60 },  cost: { iron: 4, crystal: 2, shard: 4 }, desc: "DEF +26 / 最大HP +60" },
   { id: "a_dragon", name: "竜鱗の鎧",      icon: "🛡️", type: "armor", stats: { def: 40, hp: 100 },     cost: { mithril: 4, crystal: 2, pelt: 6 }, desc: "DEF +40 / 最大HP +100" },
   { id: "a_soul", name: "守護神の鎧",      icon: "🛡️", type: "armor", stats: { def: 55, hp: 160, mp: 20 }, cost: { soul: 5, mithril: 3, crystal: 3 }, desc: "DEF +55 / HP +160 / MP +20" },
+
+  // --- アクセサリ（accessory枠） ---
+  { id: "acc_power",  name: "力の指輪",     icon: "💍", type: "accessory", stats: { atk: 6 },              cost: { iron: 3, shard: 2 } },
+  { id: "acc_guard",  name: "守りのお守り", icon: "🧿", type: "accessory", stats: { def: 6, hp: 20 },      cost: { stone: 5, pelt: 4 } },
+  { id: "acc_crit",   name: "会心の指輪",   icon: "💍", type: "accessory", stats: { crit: 0.12 },          cost: { fang: 4, shard: 3 } },
+  { id: "acc_mana",   name: "知恵の指輪",   icon: "💍", type: "accessory", stats: { mp: 22 },              cost: { shard: 5, crystal: 1 } },
+  { id: "acc_lucky",  name: "幸運のお守り", icon: "🍀", type: "accessory", stats: { dropBonus: 0.25 },     cost: { gel: 5, crystal: 1 } },
+  { id: "acc_ward",   name: "抵抗のお守り", icon: "🧿", type: "accessory", stats: { guard: 0.6 },          cost: { gel: 6, shard: 4 } },
+  { id: "acc_hero",   name: "英雄の証",     icon: "🏅", type: "accessory", stats: { atk: 12, def: 12, crit: 0.08 }, cost: { soul: 3, crystal: 2 } },
 ];
 
+function statBadges(s) {
+  const p = [];
+  if (s.atk) p.push(`ATK +${s.atk}`);
+  if (s.def) p.push(`DEF +${s.def}`);
+  if (s.hp) p.push(`HP +${s.hp}`);
+  if (s.mp) p.push(`MP +${s.mp}`);
+  if (s.crit) p.push(`会心率 +${Math.round(s.crit * 100)}%`);
+  if (s.guard) p.push(`状態異常耐性 ${Math.round(s.guard * 100)}%`);
+  if (s.dropBonus) p.push(`ドロップ/G +${Math.round(s.dropBonus * 100)}%`);
+  return p.join(" / ");
+}
 function gearEffectText(r) {
   if (r.type === "weapon") {
     const w = WTYPES[r.wtype] || WTYPES.fist;
@@ -200,7 +220,65 @@ function gearEffectText(r) {
     if (r.stats.mp) parts.push(`MP +${r.stats.mp}`);
     return `${w.name}${r.element ? " / " + elemLabel(r.element) : ""} ・ ${parts.join(" / ")}（${w.note}）`;
   }
+  if (r.type === "accessory") return "装飾品 ・ " + statBadges(r.stats);
   return r.desc || "";
+}
+
+// 強化コスト
+function enhanceCost(id) {
+  const r = RECIPE_BY_ID[id];
+  const lv = enhanceLv(id);
+  const tier = Math.max(1, Math.round(gearScore(r) / 18));
+  return { gold: 40 * (lv + 1) + tier * 12 * (lv + 1), mat: "shard", matN: lv + 1 };
+}
+
+/* ---------- 素材の売値 ---------- */
+const SELL_PRICE = {
+  wood: 2, hardwood: 6, stone: 2, iron: 9, mithril: 45,
+  gel: 3, fang: 5, pelt: 4, shard: 12, crystal: 35, soul: 90,
+};
+
+/* ---------- クエスト ---------- */
+const QUESTS = [
+  { id: "q_slime",  name: "スライム退治",       type: "kill",   target: "スライム",       count: 5,  reward: { gold: 60, items: { potion_hp: 1 } } },
+  { id: "q_wood",   name: "木こりの仕事",       type: "gather", mat: "wood",             count: 15, reward: { gold: 70 } },
+  { id: "q_rabbit", name: "野ウサギ狩り",       type: "kill",   target: "ホーンラビット", count: 6,  reward: { gold: 80, mats: { pelt: 3 } } },
+  { id: "q_wolf",   name: "森の脅威",           type: "kill",   target: "森オオカミ",     count: 6,  reward: { gold: 140, items: { potion_mp: 1 } } },
+  { id: "q_iron",   name: "鉱石ハンター",       type: "gather", mat: "iron",             count: 20, reward: { gold: 220, mats: { shard: 3 } } },
+  { id: "q_boss1",  name: "討伐：キングスライム", type: "boss", target: "キングスライム",  count: 1,  reward: { gold: 180, items: { elixir: 1 } } },
+  { id: "q_golem",  name: "岩を砕く者",         type: "kill",   target: "ロックゴーレム", count: 8,  reward: { gold: 320, mats: { crystal: 2 } } },
+  { id: "q_boss3",  name: "討伐：ゴーレムロード", type: "boss", target: "ゴーレムロード",  count: 1,  reward: { gold: 500, mats: { soul: 2 } } },
+  { id: "q_dragon", name: "竜殺し",             type: "boss",   target: "古龍ヴァルガ＝レクス", count: 1, reward: { gold: 1500, mats: { soul: 4, crystal: 3 } } },
+];
+function questProgress(q) { return state.questProg[q.id] || 0; }
+function questDone(q) { return questProgress(q) >= q.count; }
+function questTrack(type, key, n = 1) {
+  let changed = false;
+  for (const q of QUESTS) {
+    if (q.type !== type) continue;
+    if (type === "gather" && q.mat !== key) continue;
+    if ((type === "kill" || type === "boss") && q.target !== key) continue;
+    if (state.questClaimed[q.id]) continue;
+    if (questDone(q)) continue;
+    state.questProg[q.id] = Math.min(q.count, questProgress(q) + n);
+    if (questDone(q)) { log(`📋 クエスト「${q.name}」達成！受け取れるよ。`, "l-good"); toast(`クエスト達成: ${q.name}`); }
+    changed = true;
+  }
+  return changed;
+}
+function claimQuest(id) {
+  const q = QUESTS.find(x => x.id === id);
+  if (!q || !questDone(q) || state.questClaimed[id]) return;
+  state.questClaimed[id] = true;
+  const r = q.reward;
+  let parts = [];
+  if (r.gold) { state.gold += r.gold; parts.push(`💰${r.gold}G`); }
+  for (const [m, n] of Object.entries(r.mats || {})) { addMat(m, n); parts.push(`${MATERIALS[m].icon}×${n}`); }
+  for (const [it, n] of Object.entries(r.items || {})) { state.items[it] = itemQty(it) + n; parts.push(`${SHOP_BY_ID[it].icon}×${n}`); }
+  log(`🎁 報酬を受け取った: ${parts.join(" / ")}`, "l-gold");
+  toast("報酬ゲット！");
+  sfx("quest");
+  save(); renderAll();
 }
 
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map(r => [r.id, r]));
@@ -212,10 +290,12 @@ const BASE_STATS = { atk: 5, def: 2, maxHp: 30, maxMp: 10 };
 function newGame() {
   return {
     level: 1, exp: 0, hp: BASE_STATS.maxHp, mp: BASE_STATS.maxMp, gold: 0,
-    materials: {}, owned: [], items: {},
+    materials: {}, owned: [], items: {}, enhance: {},
     perm: { atk: 0, def: 0, hp: 0 }, permBought: { atk: 0, def: 0, hp: 0 },
-    equipped: { weapon: null, armor: null, axe: null, pickaxe: null },
-    bossCleared: {},
+    equipped: { weapon: null, armor: null, accessory: null, axe: null, pickaxe: null },
+    bossCleared: {}, dex: {}, questProg: {}, questClaimed: {},
+    settings: { sound: true, bgm: false, craftableOnly: false },
+    lastBattle: null,
     currentGatherArea: "grassland",
   };
 }
@@ -230,9 +310,15 @@ function loadGame() {
       const s = Object.assign(newGame(), JSON.parse(raw));
       // 後方互換：欠けている入れ子を補完
       s.items = s.items || {};
+      s.enhance = s.enhance || {};
       s.perm = Object.assign({ atk: 0, def: 0, hp: 0 }, s.perm);
       s.permBought = Object.assign({ atk: 0, def: 0, hp: 0 }, s.permBought);
+      s.equipped = Object.assign({ weapon: null, armor: null, accessory: null, axe: null, pickaxe: null }, s.equipped);
       s.bossCleared = s.bossCleared || {};
+      s.dex = s.dex || {};
+      s.questProg = s.questProg || {};
+      s.questClaimed = s.questClaimed || {};
+      s.settings = Object.assign({ sound: true, bgm: false, craftableOnly: false }, s.settings);
       return s;
     }
   } catch (e) {}
@@ -243,19 +329,34 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
 /* ---------- 計算ヘルパー ---------- */
 function expToNext(level) { return Math.floor(10 * Math.pow(level, 1.5)); }
 
+// 強化(+N)を反映した装備のステータス
+const ENHANCE_MAX = 10;
+function enhanceLv(id) { return state.enhance[id] || 0; }
+function gearStats(id) {
+  const r = RECIPE_BY_ID[id]; if (!r) return {};
+  const base = r.stats || {};
+  const f = 1 + 0.18 * enhanceLv(id);
+  const out = {};
+  for (const k of ["atk", "def", "hp", "mp"]) if (base[k]) out[k] = Math.round(base[k] * f);
+  for (const k of ["crit", "guard", "dropBonus"]) if (base[k]) out[k] = base[k];
+  return out;
+}
+
 function derivedStats() {
   let atk = BASE_STATS.atk + (state.level - 1) * 2 + (state.perm.atk || 0);
   let def = BASE_STATS.def + (state.level - 1) * 1 + (state.perm.def || 0);
   let maxHp = BASE_STATS.maxHp + (state.level - 1) * 8 + (state.perm.hp || 0);
   let maxMp = BASE_STATS.maxMp + (state.level - 1) * 2;
-  for (const slot of ["weapon", "armor"]) {
+  let crit = 0, guard = 0, dropBonus = 0;
+  for (const slot of ["weapon", "armor", "accessory"]) {
     const id = state.equipped[slot];
     if (id && RECIPE_BY_ID[id]) {
-      const s = RECIPE_BY_ID[id].stats || {};
+      const s = gearStats(id);
       atk += s.atk || 0; def += s.def || 0; maxHp += s.hp || 0; maxMp += s.mp || 0;
+      crit += s.crit || 0; guard += s.guard || 0; dropBonus += s.dropBonus || 0;
     }
   }
-  return { atk, def, maxHp, maxMp };
+  return { atk, def, maxHp, maxMp, crit, guard, dropBonus };
 }
 
 function equippedWeapon() { const id = state.equipped.weapon; return id ? RECIPE_BY_ID[id] : null; }
@@ -267,6 +368,7 @@ function matQty(id) { return state.materials[id] || 0; }
 function addMat(id, n) { state.materials[id] = matQty(id) + n; }
 function itemQty(id) { return state.items[id] || 0; }
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function fmt(n) { return (n || 0).toLocaleString("en-US"); }
 function clampVitals() {
   const s = derivedStats();
   if (state.hp == null) state.hp = s.maxHp;
@@ -307,6 +409,7 @@ function gainExp(amount) {
     state.hp = s.maxHp; state.mp = s.maxMp;
     log(`🎉 レベルアップ！ Lv.${state.level} になった（HP/MP全回復）`, "l-good");
     toast(`Lv.${state.level} に上がった！`);
+    sfx("level");
   }
 }
 
@@ -327,10 +430,11 @@ function gather(areaId, nodeId) {
     if (Math.random() <= y.chance) {
       const amount = rand(y.min, y.max) + Math.floor(bonus * 0.7);
       addMat(y.mat, amount);
+      questTrack("gather", y.mat, amount);
       got.push(`${MATERIALS[y.mat].icon}${MATERIALS[y.mat].name} ×${amount}`);
     }
   }
-  if (got.length) { log(`⛏ ${node.name}から ${got.join(" / ")} を採集した。`, "l-good"); gainExp(2); }
+  if (got.length) { log(`⛏ ${node.name}から ${got.join(" / ")} を採集した。`, "l-good"); sfx("gather"); gainExp(2); }
   else log(`${node.name}からは何も採れなかった…`, "l-sys");
   save(); renderAll();
 }
@@ -338,6 +442,33 @@ function gather(areaId, nodeId) {
 /* =========================================================
    戦闘
    ========================================================= */
+
+/* --- 演出（ダメージポップ・シェイク・フラッシュ） --- */
+let fxQueue = [];
+function pushFx(ev) { fxQueue.push(ev); }
+function flushFx() {
+  if (typeof document === "undefined") { fxQueue = []; return; }
+  const evs = fxQueue; fxQueue = [];
+  evs.forEach((ev, i) => setTimeout(() => spawnPop(ev), i * 170));
+}
+function spawnPop(ev) {
+  const sel = ev.who === "enemy" ? ".fighter.enemy" : ".fighter.player";
+  const host = document.querySelector("#battle " + sel);
+  if (!host) return;
+  const pop = document.createElement("div");
+  let cls = "dmg-pop", txt;
+  if (ev.heal != null) { cls += " heal"; txt = "+" + ev.heal; }
+  else { txt = String(ev.dmg); if (ev.crit) { cls += " crit"; txt = "会心 " + txt; } else if (ev.weak) cls += " weak"; }
+  pop.className = cls; pop.textContent = txt;
+  host.appendChild(pop);
+  setTimeout(() => pop.remove(), 700);
+  const sprite = host.querySelector(".sprite-inner");
+  if (sprite && ev.heal == null) { sprite.classList.remove("shake"); void sprite.offsetWidth; sprite.classList.add("shake"); }
+  if (ev.who === "player" && ev.dmg != null) {
+    const b = document.getElementById("battle");
+    if (b) { b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 260); }
+  }
+}
 
 function startBattle(areaId, kind = "normal") {
   const area = AREAS.find(a => a.id === areaId);
@@ -351,8 +482,9 @@ function startBattle(areaId, kind = "normal") {
     enemy: { ...m, maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss: kind === "boss" },
     defending: false, over: false, showSkills: false, showItems: false,
   };
-  if (kind === "boss") log(`👑 ボス『${m.name}』が立ちはだかる！（弱点:${elemLabel(m.weak)} / 耐性:${elemLabel(m.resist)}）`, "l-bad");
-  else log(`⚔ ${m.name}（弱点:${elemLabel(m.weak)}${m.resist ? " / 耐性:" + elemLabel(m.resist) : ""}）が現れた！`, "l-sys");
+  state.lastBattle = { areaId, kind };
+  if (kind === "boss") { log(`👑 ボス『${m.name}』が立ちはだかる！（弱点:${elemLabel(m.weak)} / 耐性:${elemLabel(m.resist)}）`, "l-bad"); sfx("boss"); }
+  else { log(`⚔ ${m.name}（弱点:${elemLabel(m.weak)}${m.resist ? " / 耐性:" + elemLabel(m.resist) : ""}）が現れた！`, "l-sys"); }
   document.getElementById("area-list").classList.add("hidden");
   renderBattle(); renderStatus();
 }
@@ -423,6 +555,8 @@ function dealHit(opts) {
   dmg = Math.max(1, Math.round(dmg + rand(-2, 2)));
   e.hp = Math.max(0, e.hp - dmg);
   log(`${e.name} に ${dmg} ダメージ！${mark}`, (crit || mark.includes("弱点")) ? "l-good" : "");
+  pushFx({ who: "enemy", dmg, crit, weak: mark.includes("弱点") });
+  sfx(crit ? "crit" : "hit");
 
   // 状態異常付与
   if (opts.inflict) inflict(e, e.name, opts.inflict, ps.atk);
@@ -438,6 +572,8 @@ function playerHeal(frac) {
   const amt = Math.round(s.maxHp * frac);
   state.hp = Math.min(s.maxHp, state.hp + amt);
   log(`💚 ${amt} 回復した。`, "l-good");
+  pushFx({ who: "player", heal: amt });
+  sfx("heal");
 }
 
 const combatCtx = { hit: (opts) => dealHit(opts || {}), heal: (frac) => playerHeal(frac) };
@@ -445,6 +581,7 @@ const combatCtx = { hit: (opts) => dealHit(opts || {}), heal: (frac) => playerHe
 /* --- プレイヤーの行動 --- */
 function actAttack() {
   if (!battle || battle.over) return;
+  fxQueue = [];
   const wt = weaponType();
   for (let i = 0; i < (wt.hits || 1); i++) dealHit({});
   finishPlayerAction();
@@ -454,6 +591,7 @@ function actSkill(skillId) {
   const sk = SKILLS[skillId];
   if (!sk) return;
   if (state.mp < sk.mp) { toast("MPが足りない"); return; }
+  fxQueue = [];
   state.mp -= sk.mp;
   log(`${sk.icon} ${sk.name} を放った！`, "l-sys");
   sk.run(combatCtx);
@@ -462,6 +600,7 @@ function actSkill(skillId) {
 }
 function actDefend() {
   if (!battle || battle.over) return;
+  fxQueue = [];
   battle.defending = true;
   const s = derivedStats();
   state.mp = Math.min(s.maxMp, state.mp + 5);
@@ -471,6 +610,7 @@ function actDefend() {
 function actItem(itemId) {
   if (!battle || battle.over) return;
   if (itemQty(itemId) <= 0) return;
+  fxQueue = [];
   const it = SHOP_BY_ID[itemId];
   const s = derivedStats();
   if (itemId === "potion_hp") { const a = Math.round(s.maxHp * .5); state.hp = Math.min(s.maxHp, state.hp + a); log(`🧪 ${a} 回復した。`, "l-good"); }
@@ -509,9 +649,11 @@ function enemyPhase() {
     if (battle.defending) edmg = Math.max(1, Math.round(edmg * 0.4));
     state.hp = Math.max(0, state.hp - edmg);
     log(`${e.name} の攻撃！ ${edmg} ダメージを受けた。`, "l-bad");
+    pushFx({ who: "player", dmg: edmg });
+    sfx("enemyhit");
     if (state.hp <= 0) { loseBattle(); return; }
-    // 敵の状態異常付与
-    if (e.inflict && Math.random() < (e.inflictChance || 0.3)) {
+    // 敵の状態異常付与（抵抗で確率減）
+    if (e.inflict && Math.random() < (e.inflictChance || 0.3) * (1 - (ps.guard || 0))) {
       inflict(state, "あなた", e.inflict, e.atk);
     }
   }
@@ -533,39 +675,50 @@ function startPlayerTurn() {
     enemyPhase();
     return;
   }
-  renderBattle(); renderStatus(); save();
+  renderBattle(); renderStatus(); flushFx(); save();
+  if (battle.auto && !battle.over) setTimeout(() => { if (battle && !battle.over && battle.auto) actAttack(); }, 650);
 }
 
 function winBattle() {
   const e = battle.enemy;
+  const isBoss = battle.kind === "boss";
   battle.over = true;
+  renderBattle(); flushFx();
   log(`✨ ${e.name} を倒した！`, "l-good");
+  const ps = derivedStats();
   let drops = [];
   for (const d of e.drops || []) {
-    if (Math.random() <= d.chance) {
+    if (Math.random() <= d.chance + (ps.dropBonus || 0)) {
       const amt = rand(d.min, d.max);
       addMat(d.mat, amt);
       drops.push(`${MATERIALS[d.mat].icon}${MATERIALS[d.mat].name} ×${amt}`);
     }
   }
-  state.gold += e.gold;
+  const gold = Math.round(e.gold * (1 + (ps.dropBonus || 0)));
+  state.gold += gold;
   if (drops.length) log(`ドロップ: ${drops.join(" / ")}`, "l-good");
-  log(`💰 ${e.gold}G を手に入れた。`, "l-gold");
-  if (battle.kind === "boss") {
+  log(`💰 ${gold}G を手に入れた。`, "l-gold");
+  // 図鑑＆クエスト
+  state.dex[e.name] = (state.dex[e.name] || 0) + 1;
+  questTrack("kill", e.name);
+  if (isBoss) {
+    questTrack("boss", e.name);
     const first = !state.bossCleared[battle.areaId];
     state.bossCleared[battle.areaId] = true;
-    if (first) { log(`👑 ボス初撃破！`, "l-good"); }
+    if (first) log(`👑 ボス初撃破！`, "l-good");
     toast(`ボス『${e.name}』を撃破！`);
   } else {
     toast(`${e.name} 撃破！ +${e.exp}EXP`);
   }
+  sfx("win");
   gainExp(e.exp);
   save();
-  endBattleUI();
+  setTimeout(endBattleUI, 700);
 }
 
 function loseBattle() {
   battle.over = true;
+  renderBattle(); flushFx();
   log(`💀 倒れてしまった…拠点に戻った。`, "l-bad");
   const lost = Math.floor(state.gold * 0.2);
   state.gold -= lost;
@@ -573,8 +726,9 @@ function loseBattle() {
   const s = derivedStats();
   state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
   toast("やられてしまった…");
+  sfx("lose");
   save();
-  endBattleUI();
+  setTimeout(endBattleUI, 700);
 }
 
 function fleeBattle() {
@@ -600,8 +754,39 @@ function craft(recipeId) {
   if (!state.owned.includes(recipeId)) state.owned.push(recipeId);
   log(`🔨 ${r.name} を作成した！`, "l-good");
   toast(`${r.name} を作った！`);
+  sfx("craft");
   autoEquipIfBetter(r);
   gainExp(5);
+  save(); renderAll();
+}
+
+/* ---------- 装備の強化(+N) ---------- */
+function enhance(id) {
+  const r = RECIPE_BY_ID[id];
+  if (!r || !["weapon", "armor", "accessory"].includes(r.type)) return;
+  const lv = enhanceLv(id);
+  if (lv >= ENHANCE_MAX) { toast("これ以上強化できない"); return; }
+  const c = enhanceCost(id);
+  if (state.gold < c.gold || matQty(c.mat) < c.matN) { toast("強化の素材かゴールドが足りない"); return; }
+  state.gold -= c.gold; addMat(c.mat, -c.matN);
+  state.enhance[id] = lv + 1;
+  clampVitals();
+  log(`⚒ ${r.name} を +${lv + 1} に強化した！`, "l-good");
+  toast(`${r.name} +${lv + 1}！`);
+  sfx("enhance");
+  save(); renderAll();
+}
+
+/* ---------- 素材の売却 ---------- */
+function sellMat(id, all) {
+  const price = SELL_PRICE[id] || 1;
+  const n = all ? matQty(id) : 1;
+  if (n <= 0) return;
+  addMat(id, -n);
+  const g = price * n;
+  state.gold += g;
+  log(`🪙 ${MATERIALS[id].name} ×${n} を ${g}G で売却した。`, "l-gold");
+  sfx("buy");
   save(); renderAll();
 }
 function gearScore(r) {
@@ -640,6 +825,7 @@ function buyItem(id) {
     log(`🌱 ${it.name} を使った！ ${it.desc}（-${price}G）`, "l-good");
   }
   toast(`${it.name} を購入`);
+  sfx("buy");
   save(); renderAll();
 }
 
@@ -659,12 +845,23 @@ function renderStatus() {
   document.getElementById("exp-fill").style.width = (state.exp / need * 100) + "%";
   document.getElementById("stat-atk").textContent = s.atk;
   document.getElementById("stat-def").textContent = s.def;
-  document.getElementById("stat-gold").textContent = state.gold;
+  document.getElementById("stat-gold").textContent = fmt(state.gold);
 }
 
 function renderAreas() {
   const wrap = document.getElementById("area-list");
   wrap.innerHTML = "";
+  if (state.lastBattle) {
+    const lb = state.lastBattle;
+    const area = AREAS.find(a => a.id === lb.areaId);
+    if (area) {
+      const rep = document.createElement("button");
+      rep.className = "action repeat-btn";
+      rep.textContent = `🔁 直前と再戦（${area.icon}${area.name}${lb.kind === "boss" ? " ボス" : ""}）`;
+      rep.onclick = () => startBattle(lb.areaId, lb.kind);
+      wrap.appendChild(rep);
+    }
+  }
   for (const a of AREAS) {
     const locked = state.level < a.reqLevel;
     const card = document.createElement("div");
@@ -778,6 +975,11 @@ function renderBattle() {
     actions.appendChild(mk("🎒 道具", () => { battle.showItems = true; renderBattle(); }, "action"));
     actions.appendChild(mk("🛡 防御", actDefend, "action secondary"));
     actions.appendChild(mk("🏃 逃げる", fleeBattle, "action secondary", battle.kind === "boss"));
+    const autoBtn = mk(battle.auto ? "🔁 オート:ON" : "🔁 オート", () => {
+      battle.auto = !battle.auto; renderBattle();
+      if (battle.auto && !battle.over) setTimeout(() => { if (battle && !battle.over && battle.auto) actAttack(); }, 300);
+    }, battle.auto ? "action" : "action secondary");
+    actions.appendChild(autoBtn);
   }
 }
 
@@ -818,16 +1020,26 @@ function renderGather() {
 function renderCraft() {
   const wrap = document.getElementById("recipe-list");
   wrap.innerHTML = "";
-  const order = ["axe", "pickaxe", "weapon", "armor"];
+  // フィルタ：作れるものだけ
+  const filter = document.createElement("label");
+  filter.className = "filter-row";
+  filter.innerHTML = `<input type="checkbox" id="craftable-only" ${state.settings.craftableOnly ? "checked" : ""}> 作れるものだけ表示`;
+  wrap.appendChild(filter);
+  filter.querySelector("input").onchange = (e) => { state.settings.craftableOnly = e.target.checked; save(); renderCraft(); };
+
+  const order = ["axe", "pickaxe", "weapon", "armor", "accessory"];
   const sorted = [...RECIPES].sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+  let shown = 0;
   for (const r of sorted) {
     const ok = canCraft(r);
+    if (state.settings.craftableOnly && !ok) continue;
+    shown++;
     const owned = state.owned.includes(r.id);
     const costStr = Object.entries(r.cost).map(([m, q]) => {
       const lack = matQty(m) < q;
       return `<span class="${lack ? "lack" : ""}">${MATERIALS[m].icon}${MATERIALS[m].name} ${matQty(m)}/${q}</span>`;
     }).join("　");
-    const typeLabel = { axe: "斧", pickaxe: "ピッケル", weapon: "武器", armor: "防具" }[r.type];
+    const typeLabel = { axe: "斧", pickaxe: "ピッケル", weapon: "武器", armor: "防具", accessory: "装飾" }[r.type];
     const card = document.createElement("div");
     card.className = "recipe-card" + (owned ? " owned" : "");
     card.innerHTML = `
@@ -842,6 +1054,11 @@ function renderCraft() {
     btn.onclick = () => craft(r.id);
     card.appendChild(btn);
     wrap.appendChild(card);
+  }
+  if (shown === 0) {
+    const note = document.createElement("div");
+    note.className = "empty-note"; note.textContent = "今すぐ作れるレシピがない。素材を集めよう。";
+    wrap.appendChild(note);
   }
 }
 
@@ -883,11 +1100,44 @@ function renderShop() {
     card.appendChild(btn);
     pWrap.appendChild(card);
   }
+  // 素材売却
+  const sWrap = document.getElementById("shop-sell");
+  if (sWrap) {
+    sWrap.innerHTML = "";
+    const owned = Object.keys(MATERIALS).filter(mid => matQty(mid) > 0);
+    if (owned.length === 0) {
+      sWrap.innerHTML = `<div class="empty-note">売れる素材がない。</div>`;
+    } else {
+      for (const mid of owned) {
+        const price = SELL_PRICE[mid] || 1;
+        const card = document.createElement("div");
+        card.className = "recipe-card";
+        card.innerHTML = `
+          <div class="gicon">${MATERIALS[mid].icon}</div>
+          <div class="rinfo">
+            <h4>${MATERIALS[mid].name} <span class="ttag">所持 ×${matQty(mid)}</span></h4>
+            <div class="cost">💰 ${price}G / 個</div>
+          </div>`;
+        const b1 = document.createElement("button");
+        b1.className = "action secondary"; b1.textContent = "1個売る";
+        b1.onclick = () => sellMat(mid, false);
+        const b2 = document.createElement("button");
+        b2.className = "action"; b2.textContent = "全部売る";
+        b2.onclick = () => sellMat(mid, true);
+        const box = document.createElement("div"); box.className = "sell-btns";
+        box.appendChild(b1); box.appendChild(b2);
+        card.appendChild(box);
+        sWrap.appendChild(card);
+      }
+    }
+  }
 }
+
+function enhTag(id) { const lv = enhanceLv(id); return lv > 0 ? ` <span class="enh">+${lv}</span>` : ""; }
 
 function renderEquip() {
   const slots = [
-    { key: "weapon", label: "武器" }, { key: "armor", label: "防具" },
+    { key: "weapon", label: "武器" }, { key: "armor", label: "防具" }, { key: "accessory", label: "装飾品" },
     { key: "axe", label: "斧" }, { key: "pickaxe", label: "ピッケル" },
   ];
   const wrap = document.getElementById("equip-slots");
@@ -899,7 +1149,7 @@ function renderEquip() {
     div.className = "slot";
     div.innerHTML = `
       <div class="slot-name">${sl.label}</div>
-      <div class="slot-item ${r ? "" : "empty"}">${r ? r.icon + " " + r.name : "なし"}</div>`;
+      <div class="slot-item ${r ? "" : "empty"}">${r ? r.icon + " " + r.name + enhTag(id) : "なし"}</div>`;
     wrap.appendChild(div);
   }
   const gearWrap = document.getElementById("owned-gear");
@@ -912,24 +1162,49 @@ function renderEquip() {
     const r = RECIPE_BY_ID[id];
     const slot = r.type === "weapon" ? "weapon" : r.type === "armor" ? "armor" : r.type;
     const equipped = state.equipped[slot] === id;
+    const canEnhance = ["weapon", "armor", "accessory"].includes(r.type);
     const card = document.createElement("div");
     card.className = "gear-card";
+    let effText = gearEffectText(r);
+    if (canEnhance && enhanceLv(id) > 0) {
+      const s = gearStats(id);
+      effText = `現在: ${statBadges(s)}`;
+    }
     card.innerHTML = `
       <div class="gicon">${r.icon}</div>
       <div class="ginfo">
-        <h4>${r.name}</h4>
-        <div class="effect">${gearEffectText(r)}</div>
+        <h4>${r.name}${enhTag(id)}</h4>
+        <div class="effect">${effText}</div>
       </div>`;
+    const btns = document.createElement("div");
+    btns.className = "gear-btns";
     if (equipped) {
       const tag = document.createElement("span");
       tag.className = "equipped-tag"; tag.textContent = "装備中";
-      card.appendChild(tag);
+      btns.appendChild(tag);
     } else {
       const btn = document.createElement("button");
-      btn.className = "action secondary"; btn.textContent = "装備する";
+      btn.className = "action secondary"; btn.textContent = "装備";
       btn.onclick = () => equipItem(id);
-      card.appendChild(btn);
+      btns.appendChild(btn);
     }
+    if (canEnhance) {
+      const lv = enhanceLv(id);
+      if (lv >= ENHANCE_MAX) {
+        const m = document.createElement("span");
+        m.className = "enh-max"; m.textContent = "MAX";
+        btns.appendChild(m);
+      } else {
+        const c = enhanceCost(id);
+        const eb = document.createElement("button");
+        eb.className = "action enh-btn";
+        eb.innerHTML = `⚒ 強化+${lv + 1}<span class="enh-cost">💰${c.gold} ${MATERIALS[c.mat].icon}${c.matN}</span>`;
+        eb.disabled = state.gold < c.gold || matQty(c.mat) < c.matN;
+        eb.onclick = () => enhance(id);
+        btns.appendChild(eb);
+      }
+    }
+    card.appendChild(btns);
     gearWrap.appendChild(card);
   }
 }
@@ -955,9 +1230,88 @@ function renderBag() {
   }
 }
 
+// 全モンスター（通常＋ボス）の一覧
+function allMonsters() {
+  const list = [];
+  for (const a of AREAS) {
+    for (const m of a.monsters) list.push({ ...m, area: a.name });
+    if (a.boss) list.push({ ...a.boss, area: a.name, isBoss: true });
+  }
+  return list;
+}
+
+function renderRecord() {
+  // クエスト
+  const qWrap = document.getElementById("quest-list");
+  if (qWrap) {
+    qWrap.innerHTML = "";
+    for (const q of QUESTS) {
+      const prog = questProgress(q);
+      const done = questDone(q);
+      const claimed = state.questClaimed[q.id];
+      const r = q.reward;
+      const rewardStr = [r.gold ? `💰${r.gold}` : "",
+        ...Object.entries(r.mats || {}).map(([m, n]) => `${MATERIALS[m].icon}×${n}`),
+        ...Object.entries(r.items || {}).map(([it, n]) => `${SHOP_BY_ID[it].icon}×${n}`)].filter(Boolean).join(" ");
+      const card = document.createElement("div");
+      card.className = "recipe-card" + (claimed ? " owned" : "");
+      card.innerHTML = `
+        <div class="rinfo">
+          <h4>${q.name} ${claimed ? "✔" : ""}</h4>
+          <div class="effect">進捗 ${Math.min(prog, q.count)}/${q.count} ・ 報酬 ${rewardStr}</div>
+          <div class="bar quest-bar"><div class="bar-fill exp" style="width:${Math.min(100, prog / q.count * 100)}%"></div></div>
+        </div>`;
+      if (!claimed) {
+        const b = document.createElement("button");
+        b.className = "action"; b.textContent = done ? "受取" : "未達成"; b.disabled = !done;
+        b.onclick = () => claimQuest(q.id);
+        card.appendChild(b);
+      }
+      qWrap.appendChild(card);
+    }
+  }
+  // 図鑑
+  const dWrap = document.getElementById("dex-list");
+  if (dWrap) {
+    dWrap.innerHTML = "";
+    for (const m of allMonsters()) {
+      const cnt = state.dex[m.name] || 0;
+      const found = cnt > 0;
+      const card = document.createElement("div");
+      card.className = "dex-card" + (found ? "" : " unknown");
+      const art = found ? `<div class="dex-sprite">${spriteMarkup(ART_BY_NAME[m.name], m.isBoss)}</div>` : `<div class="dex-sprite dex-q">？</div>`;
+      card.innerHTML = `
+        ${art}
+        <div class="dex-info">
+          <h4>${found ? (m.isBoss ? "👑" : "") + m.name : "？？？"}</h4>
+          <div class="sub">${found ? `${m.area} ・ 撃破 ${cnt}` : "未発見"}</div>
+          ${found ? `<div class="sub">弱点 ${elemLabel(m.weak)}${m.resist ? "・耐性 " + elemLabel(m.resist) : ""}</div>
+          <div class="sub">ドロップ: ${(m.drops || []).map(d => MATERIALS[d.mat].icon).join(" ")}</div>` : ""}
+        </div>`;
+      dWrap.appendChild(card);
+    }
+  }
+}
+
+function renderSettings() {
+  const wrap = document.getElementById("settings-box");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  const mk = (label, key, onChange) => {
+    const row = document.createElement("label");
+    row.className = "filter-row";
+    row.innerHTML = `<input type="checkbox" ${state.settings[key] ? "checked" : ""}> ${label}`;
+    row.querySelector("input").onchange = (e) => { state.settings[key] = e.target.checked; save(); if (onChange) onChange(); };
+    return row;
+  };
+  wrap.appendChild(mk("🔊 効果音", "sound"));
+  wrap.appendChild(mk("🎵 BGM", "bgm", () => { if (typeof toggleBgm === "function") toggleBgm(); }));
+}
+
 function renderAll() {
   renderStatus(); renderAreas(); renderBattle();
-  renderGather(); renderCraft(); renderShop(); renderEquip(); renderBag();
+  renderGather(); renderCraft(); renderShop(); renderEquip();
+  renderRecord(); renderBag(); renderSettings();
 }
 
 /* ---------- タブ切替 ---------- */
