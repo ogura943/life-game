@@ -2,8 +2,21 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ファンタジーライフ風ゲーム</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ファンタジーライフ</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1b1f2a">
+<meta name="description" content="採集→装備作成→強化→戦闘で遊ぶファンタジーライフ風ゲーム">
+
+<!-- iOS（ホーム画面追加でアプリのように全画面起動） -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ファンライフ">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -80,6 +93,66 @@
   <!-- ログ -->
   <div id="log"></div>
 </div>
+
+<!-- インストール案内（ホーム画面に追加） -->
+<div id="install-bar" class="install-bar hidden">
+  <span id="install-text">📲 ホーム画面に追加してアプリのように使えます</span>
+  <button id="install-btn" class="install-go">追加</button>
+  <button id="install-close" class="install-x" aria-label="閉じる">✕</button>
+</div>
+
 <script src="game.js"></script>
+<script>
+/* ---- PWA: Service Worker 登録 ---- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+
+/* ---- インストール案内 ---- */
+(function () {
+  const bar = document.getElementById("install-bar");
+  const btn = document.getElementById("install-btn");
+  const txt = document.getElementById("install-text");
+  const closeBtn = document.getElementById("install-close");
+  let deferredPrompt = null;
+  const DISMISS_KEY = "fl-install-dismissed";
+
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+  const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const dismissed = localStorage.getItem(DISMISS_KEY) === "1";
+
+  closeBtn.onclick = () => {
+    bar.classList.add("hidden");
+    localStorage.setItem(DISMISS_KEY, "1");
+  };
+
+  // Android / Chrome：ネイティブのインストールプロンプト
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!isStandalone && !dismissed) bar.classList.remove("hidden");
+  });
+  btn.onclick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    bar.classList.add("hidden");
+  };
+
+  // iOS：beforeinstallprompt 非対応のため手順を案内
+  if (isiOS && !isStandalone && !dismissed) {
+    btn.classList.add("hidden");
+    txt.innerHTML = "📲 共有ボタン <b>􀈂</b> →「ホーム画面に追加」でアプリになります";
+    bar.classList.remove("hidden");
+  }
+
+  window.addEventListener("appinstalled", () => bar.classList.add("hidden"));
+})();
+</script>
 </body>
 </html>
