@@ -53,6 +53,7 @@
     <button class="tab-btn" data-tab="gather">⛏ 採集</button>
     <button class="tab-btn" data-tab="craft">🔨 作成</button>
     <button class="tab-btn" data-tab="equip">🎽 装備</button>
+    <button class="tab-btn" data-tab="shop">🛒 店</button>
     <button class="tab-btn" data-tab="bag">🎒 持ち物</button>
   </nav>
 
@@ -85,6 +86,16 @@
       <div id="equip-slots" class="equip-slots"></div>
       <h3>所持している装備・道具</h3>
       <div id="owned-gear" class="gear-list"></div>
+    </section>
+
+    <!-- お店 -->
+    <section id="tab-shop" class="tab-panel">
+      <h2>道具屋</h2>
+      <p class="hint">戦闘で稼いだゴールドで、回復アイテムや永続強化の種を買おう。アイテムは戦闘中に使える。</p>
+      <h3>消耗品（戦闘中に使用）</h3>
+      <div id="shop-consumable" class="recipe-list"></div>
+      <h3>永続強化の種</h3>
+      <div id="shop-perm" class="recipe-list"></div>
     </section>
 
     <!-- 持ち物 -->

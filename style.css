@@ -113,6 +113,8 @@ h3 { font-size: 15px; color: var(--muted); margin: 18px 0 8px; }
 .area-card h4 { margin: 0 0 3px; font-size: 16px; }
 .area-card .sub { color: var(--muted); font-size: 12px; }
 .area-card.locked { opacity: .5; }
+.area-btns { display: flex; gap: 8px; }
+.boss-btn { background: linear-gradient(90deg,#e06c75,#f2a05a) !important; color: #2a0e0e !important; }
 
 button.action {
   background: var(--accent);

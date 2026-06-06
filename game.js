@@ -4,9 +4,10 @@
 
    戦闘の特徴:
    - 武器タイプ(剣/斧/槍/弓/杖/短剣)で戦い方が変わる
-   - MP を使うスキル、防御コマンド
-   - 会心(クリティカル) と 状態異常(毒/火傷/スタン)
-   - 属性(炎/氷/雷) と モンスターの弱点
+   - MP を使うスキル、防御コマンド、道具(アイテム)コマンド
+   - 会心(クリティカル) と 状態異常(毒/火傷/スタン)…敵にも自分にも起こる
+   - 属性(炎/氷/雷) と モンスターの弱点(1.5倍)/耐性(0.5倍)
+   - 各エリアのボス戦
    ========================================================= */
 
 /* ---------- 素材 ---------- */
@@ -21,6 +22,7 @@ const MATERIALS = {
   pelt:      { name: "毛皮",          icon: "🟫" },
   shard:     { name: "魔石のかけら",  icon: "🟣" },
   crystal:   { name: "クリスタル",    icon: "💎" },
+  soul:      { name: "ボスの魂",      icon: "🔆" },
 };
 
 /* ---------- 属性 ---------- */
@@ -29,11 +31,9 @@ const ELEMENTS = {
   ice:       { name: "氷", icon: "❄️" },
   lightning: { name: "雷", icon: "⚡" },
 };
-function elemLabel(e) { return e && ELEMENTS[e] ? ELEMENTS[e].icon + ELEMENTS[e].name : ""; }
+function elemLabel(e) { return e && ELEMENTS[e] ? ELEMENTS[e].icon + ELEMENTS[e].name : "—"; }
 
-/* ---------- 武器タイプ（戦い方の違い） ----------
-   crit: 会心率 / mult: 攻撃倍率 / hits: 攻撃回数 / pierce: 防御貫通率
-   ignoreDef: 防御無視 / skills: 使えるスキルID / onCritStatus: 会心時に付与する状態 */
+/* ---------- 武器タイプ（戦い方の違い） ---------- */
 const WTYPES = {
   fist:   { name: "素手",   crit: 0.03, mult: 1.0,  hits: 1, pierce: 0,   ignoreDef: false, skills: [],                  note: "武器なし" },
   sword:  { name: "剣",     crit: 0.12, mult: 1.0,  hits: 1, pierce: 0,   ignoreDef: false, skills: ["power_strike"],     note: "バランス型・そこそこ会心" },
@@ -62,7 +62,19 @@ const SKILLS = {
     run: (c) => c.hit({ mult: 1.3, inflict: "poison" }) },
 };
 
-/* ---------- エリア ---------- */
+/* ---------- お店の品 ---------- */
+const SHOP = [
+  { id: "potion_hp", name: "回復ポーション", icon: "🧪", price: 80,  kind: "consumable", desc: "戦闘中：HPを50%回復" },
+  { id: "potion_mp", name: "マナポーション", icon: "🔵", price: 70,  kind: "consumable", desc: "戦闘中：MPを50%回復" },
+  { id: "antidote",  name: "万能薬",         icon: "💊", price: 50,  kind: "consumable", desc: "戦闘中：自分の状態異常を治す" },
+  { id: "elixir",    name: "エリクサー",     icon: "✨", price: 220, kind: "consumable", desc: "戦闘中：HP/MPを全回復" },
+  { id: "seed_atk",  name: "ちからの種",     icon: "🌰", price: 150, kind: "perm", stat: "atk", val: 2,  desc: "恒久的に ATK +2" },
+  { id: "seed_def",  name: "まもりの種",     icon: "🌱", price: 150, kind: "perm", stat: "def", val: 2,  desc: "恒久的に DEF +2" },
+  { id: "seed_hp",   name: "いのちの種",     icon: "🫘", price: 180, kind: "perm", stat: "hp",  val: 15, desc: "恒久的に 最大HP +15" },
+];
+const SHOP_BY_ID = Object.fromEntries(SHOP.map(s => [s.id, s]));
+
+/* ---------- エリア（通常モンスター＋ボス） ---------- */
 const AREAS = [
   {
     id: "grassland", name: "はじまりの草原", icon: "🌿", reqLevel: 1,
@@ -72,11 +84,14 @@ const AREAS = [
       { id: "g-rock", name: "石ころ", icon: "🪨", tool: "pickaxe", tier: 0, yields: [{ mat: "stone", min: 1, max: 2, chance: 1 }] },
     ],
     monsters: [
-      { name: "スライム", sprite: "🟢", hp: 18, atk: 4, def: 0, exp: 6, gold: 5, weak: "fire",
+      { name: "スライム", sprite: "🟢", hp: 18, atk: 4, def: 0, exp: 6, gold: 5, weak: "fire", resist: "ice",
         drops: [{ mat: "gel", min: 1, max: 2, chance: .9 }] },
       { name: "ホーンラビット", sprite: "🐰", hp: 24, atk: 6, def: 1, exp: 9, gold: 8, weak: "lightning",
         drops: [{ mat: "pelt", min: 1, max: 1, chance: .7 }, { mat: "fang", min: 1, max: 1, chance: .3 }] },
     ],
+    boss: { name: "キングスライム", sprite: "👑🟢", hp: 130, atk: 12, def: 4, exp: 90, gold: 70,
+      weak: "fire", resist: "ice", inflict: "poison", inflictChance: .35,
+      drops: [{ mat: "gel", min: 4, max: 6, chance: 1 }, { mat: "shard", min: 1, max: 2, chance: .8 }, { mat: "soul", min: 1, max: 1, chance: 1 }] },
   },
   {
     id: "forest", name: "ささやきの森", icon: "🌳", reqLevel: 4,
@@ -86,11 +101,14 @@ const AREAS = [
       { id: "f-rock", name: "苔むした岩", icon: "🪨", tool: "pickaxe", tier: 1, yields: [{ mat: "stone", min: 2, max: 3, chance: 1 }, { mat: "shard", min: 1, max: 1, chance: .25 }] },
     ],
     monsters: [
-      { name: "ゴブリン", sprite: "👺", hp: 40, atk: 10, def: 3, exp: 18, gold: 14, weak: "fire",
+      { name: "ゴブリン", sprite: "👺", hp: 40, atk: 10, def: 3, exp: 18, gold: 14, weak: "fire", resist: "lightning",
         drops: [{ mat: "fang", min: 1, max: 2, chance: .7 }, { mat: "shard", min: 1, max: 1, chance: .3 }] },
       { name: "森オオカミ", sprite: "🐺", hp: 55, atk: 14, def: 4, exp: 26, gold: 20, weak: "ice",
         drops: [{ mat: "pelt", min: 1, max: 3, chance: .9 }, { mat: "fang", min: 1, max: 2, chance: .6 }] },
     ],
+    boss: { name: "ゴブリンキング", sprite: "👑👺", hp: 280, atk: 24, def: 9, exp: 200, gold: 160,
+      weak: "fire", resist: "lightning", inflict: "stun", inflictChance: .3,
+      drops: [{ mat: "iron", min: 2, max: 4, chance: 1 }, { mat: "shard", min: 2, max: 3, chance: 1 }, { mat: "soul", min: 1, max: 2, chance: 1 }] },
   },
   {
     id: "mountain", name: "嶮しい岩山", icon: "⛰️", reqLevel: 9,
@@ -101,11 +119,14 @@ const AREAS = [
       { id: "m-tree", name: "古木", icon: "🌲", tool: "axe", tier: 2, yields: [{ mat: "hardwood", min: 2, max: 3, chance: 1 }] },
     ],
     monsters: [
-      { name: "オーク", sprite: "👹", hp: 90, atk: 20, def: 8, exp: 45, gold: 35, weak: "ice",
+      { name: "オーク", sprite: "👹", hp: 90, atk: 20, def: 8, exp: 45, gold: 35, weak: "ice", resist: "fire",
         drops: [{ mat: "fang", min: 2, max: 3, chance: .8 }, { mat: "iron", min: 1, max: 2, chance: .4 }] },
-      { name: "ロックゴーレム", sprite: "🗿", hp: 140, atk: 26, def: 14, exp: 70, gold: 55, weak: "lightning",
+      { name: "ロックゴーレム", sprite: "🗿", hp: 140, atk: 26, def: 14, exp: 70, gold: 55, weak: "lightning", resist: "ice",
         drops: [{ mat: "stone", min: 3, max: 5, chance: 1 }, { mat: "iron", min: 1, max: 3, chance: .6 }, { mat: "crystal", min: 1, max: 1, chance: .25 }] },
     ],
+    boss: { name: "ゴーレムロード", sprite: "👑🗿", hp: 560, atk: 36, def: 20, exp: 460, gold: 360,
+      weak: "lightning", resist: "fire", inflict: "stun", inflictChance: .35,
+      drops: [{ mat: "crystal", min: 2, max: 4, chance: 1 }, { mat: "iron", min: 3, max: 5, chance: 1 }, { mat: "soul", min: 2, max: 3, chance: 1 }] },
   },
   {
     id: "volcano", name: "竜の棲む火口", icon: "🌋", reqLevel: 16,
@@ -115,11 +136,14 @@ const AREAS = [
       { id: "v-crystal", name: "竜晶", icon: "💎", tool: "pickaxe", tier: 3, yields: [{ mat: "crystal", min: 1, max: 2, chance: .8 }] },
     ],
     monsters: [
-      { name: "ヘルハウンド", sprite: "🐕", hp: 200, atk: 34, def: 16, exp: 110, gold: 90, weak: "ice",
+      { name: "ヘルハウンド", sprite: "🐕", hp: 200, atk: 34, def: 16, exp: 110, gold: 90, weak: "ice", resist: "fire",
         drops: [{ mat: "fang", min: 3, max: 5, chance: 1 }, { mat: "crystal", min: 1, max: 2, chance: .4 }] },
-      { name: "炎竜ヴァルガ", sprite: "🐉", hp: 380, atk: 48, def: 24, exp: 260, gold: 220, weak: "ice",
+      { name: "炎竜ヴァルガ", sprite: "🐉", hp: 380, atk: 48, def: 24, exp: 260, gold: 220, weak: "ice", resist: "fire", inflict: "burn", inflictChance: .3,
         drops: [{ mat: "mithril", min: 2, max: 4, chance: 1 }, { mat: "crystal", min: 2, max: 3, chance: .8 }] },
     ],
+    boss: { name: "古龍ヴァルガ＝レクス", sprite: "👑🐲", hp: 1100, atk: 62, def: 30, exp: 1200, gold: 900,
+      weak: "ice", resist: "fire", inflict: "burn", inflictChance: .45,
+      drops: [{ mat: "mithril", min: 5, max: 8, chance: 1 }, { mat: "crystal", min: 3, max: 5, chance: 1 }, { mat: "soul", min: 3, max: 5, chance: 1 }] },
   },
 ];
 
@@ -136,7 +160,7 @@ const RECIPES = [
   { id: "pick_iron", name: "鉄のピッケル", icon: "⛏️", type: "pickaxe", tier: 2, cost: { hardwood: 2, iron: 4 }, desc: "鉄鉱脈や晶洞を掘れる。" },
   { id: "pick_mithril", name: "ミスリルのピッケル", icon: "⛏️", type: "pickaxe", tier: 3, cost: { iron: 5, mithril: 2 }, desc: "ミスリル鉱脈を掘れる。" },
 
-  // --- 武器（wtype と element で個性が出る） ---
+  // --- 武器 ---
   { id: "w_wood_sword",  name: "木の剣",        icon: "🗡️", type: "weapon", wtype: "sword",  stats: { atk: 6 },          cost: { wood: 4 } },
   { id: "w_stone_axe",   name: "石の戦斧",      icon: "🪓",  type: "weapon", wtype: "axe",    stats: { atk: 9 },          cost: { wood: 3, stone: 5 } },
   { id: "w_oak_spear",   name: "樫の槍",        icon: "🔱",  type: "weapon", wtype: "spear",  stats: { atk: 8 },          cost: { hardwood: 2, stone: 3 } },
@@ -154,6 +178,9 @@ const RECIPES = [
 
   { id: "w_dragon_sword",name: "竜殺しの大剣",  icon: "⚔️", type: "weapon", wtype: "sword",  element: "fire", stats: { atk: 46 }, cost: { mithril: 3, crystal: 3, fang: 5 } },
   { id: "w_storm_spear", name: "雷帝の槍",      icon: "🔱",  type: "weapon", wtype: "spear",  element: "lightning", stats: { atk: 40 }, cost: { mithril: 3, crystal: 2, iron: 4 } },
+  // --- 武器：ボス素材(魂)で作る最強クラス ---
+  { id: "w_soul_blade",  name: "英雄の聖剣",    icon: "⚔️", type: "weapon", wtype: "sword",  element: "lightning", stats: { atk: 60 }, cost: { mithril: 4, soul: 5, crystal: 3 } },
+  { id: "w_soul_staff",  name: "破滅の魔杖",    icon: "🪄",  type: "weapon", wtype: "staff",  element: "ice",  stats: { atk: 55, mp: 24 }, cost: { soul: 5, crystal: 4, shard: 6 } },
 
   // --- 防具 ---
   { id: "a_leather", name: "革の鎧",       icon: "🦺", type: "armor", stats: { def: 4, hp: 10 },        cost: { pelt: 4 }, desc: "DEF +4 / 最大HP +10" },
@@ -163,16 +190,15 @@ const RECIPES = [
   { id: "a_mage_robe", name: "魔導のローブ", icon: "🥻", type: "armor", stats: { def: 10, hp: 25, mp: 20 }, cost: { shard: 6, pelt: 3, crystal: 1 }, desc: "DEF +10 / HP +25 / MP +20" },
   { id: "a_crystal", name: "クリスタルメイル", icon: "🛡️", type: "armor", stats: { def: 26, hp: 60 },  cost: { iron: 4, crystal: 2, shard: 4 }, desc: "DEF +26 / 最大HP +60" },
   { id: "a_dragon", name: "竜鱗の鎧",      icon: "🛡️", type: "armor", stats: { def: 40, hp: 100 },     cost: { mithril: 4, crystal: 2, pelt: 6 }, desc: "DEF +40 / 最大HP +100" },
+  { id: "a_soul", name: "守護神の鎧",      icon: "🛡️", type: "armor", stats: { def: 55, hp: 160, mp: 20 }, cost: { soul: 5, mithril: 3, crystal: 3 }, desc: "DEF +55 / HP +160 / MP +20" },
 ];
 
-// 武器・防具の効果説明を自動生成
 function gearEffectText(r) {
   if (r.type === "weapon") {
     const w = WTYPES[r.wtype] || WTYPES.fist;
     const parts = [`ATK +${r.stats.atk}`];
     if (r.stats.mp) parts.push(`MP +${r.stats.mp}`);
-    let line = `${w.name}${r.element ? " / " + elemLabel(r.element) : ""} ・ ${parts.join(" / ")}`;
-    return line + `（${w.note}）`;
+    return `${w.name}${r.element ? " / " + elemLabel(r.element) : ""} ・ ${parts.join(" / ")}（${w.note}）`;
   }
   return r.desc || "";
 }
@@ -186,8 +212,10 @@ const BASE_STATS = { atk: 5, def: 2, maxHp: 30, maxMp: 10 };
 function newGame() {
   return {
     level: 1, exp: 0, hp: BASE_STATS.maxHp, mp: BASE_STATS.maxMp, gold: 0,
-    materials: {}, owned: [],
+    materials: {}, owned: [], items: {},
+    perm: { atk: 0, def: 0, hp: 0 }, permBought: { atk: 0, def: 0, hp: 0 },
     equipped: { weapon: null, armor: null, axe: null, pickaxe: null },
+    bossCleared: {},
     currentGatherArea: "grassland",
   };
 }
@@ -198,7 +226,15 @@ let battle = null;
 function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) return Object.assign(newGame(), JSON.parse(raw));
+    if (raw) {
+      const s = Object.assign(newGame(), JSON.parse(raw));
+      // 後方互換：欠けている入れ子を補完
+      s.items = s.items || {};
+      s.perm = Object.assign({ atk: 0, def: 0, hp: 0 }, s.perm);
+      s.permBought = Object.assign({ atk: 0, def: 0, hp: 0 }, s.permBought);
+      s.bossCleared = s.bossCleared || {};
+      return s;
+    }
   } catch (e) {}
   return newGame();
 }
@@ -208,9 +244,9 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
 function expToNext(level) { return Math.floor(10 * Math.pow(level, 1.5)); }
 
 function derivedStats() {
-  let atk = BASE_STATS.atk + (state.level - 1) * 2;
-  let def = BASE_STATS.def + (state.level - 1) * 1;
-  let maxHp = BASE_STATS.maxHp + (state.level - 1) * 8;
+  let atk = BASE_STATS.atk + (state.level - 1) * 2 + (state.perm.atk || 0);
+  let def = BASE_STATS.def + (state.level - 1) * 1 + (state.perm.def || 0);
+  let maxHp = BASE_STATS.maxHp + (state.level - 1) * 8 + (state.perm.hp || 0);
   let maxMp = BASE_STATS.maxMp + (state.level - 1) * 2;
   for (const slot of ["weapon", "armor"]) {
     const id = state.equipped[slot];
@@ -222,25 +258,14 @@ function derivedStats() {
   return { atk, def, maxHp, maxMp };
 }
 
-function equippedWeapon() {
-  const id = state.equipped.weapon;
-  return id ? RECIPE_BY_ID[id] : null;
-}
-function weaponType() {
-  const w = equippedWeapon();
-  return (w && WTYPES[w.wtype]) ? WTYPES[w.wtype] : WTYPES.fist;
-}
-function weaponElement() {
-  const w = equippedWeapon();
-  return w ? (w.element || null) : null;
-}
-function toolTier(kind) {
-  const id = state.equipped[kind];
-  return (id && RECIPE_BY_ID[id]) ? RECIPE_BY_ID[id].tier : 0;
-}
+function equippedWeapon() { const id = state.equipped.weapon; return id ? RECIPE_BY_ID[id] : null; }
+function weaponType() { const w = equippedWeapon(); return (w && WTYPES[w.wtype]) ? WTYPES[w.wtype] : WTYPES.fist; }
+function weaponElement() { const w = equippedWeapon(); return w ? (w.element || null) : null; }
+function toolTier(kind) { const id = state.equipped[kind]; return (id && RECIPE_BY_ID[id]) ? RECIPE_BY_ID[id].tier : 0; }
 
 function matQty(id) { return state.materials[id] || 0; }
 function addMat(id, n) { state.materials[id] = matQty(id) + n; }
+function itemQty(id) { return state.items[id] || 0; }
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function clampVitals() {
   const s = derivedStats();
@@ -249,6 +274,7 @@ function clampVitals() {
   state.hp = Math.min(state.hp, s.maxHp);
   state.mp = Math.min(state.mp, s.maxMp);
 }
+function seedPrice(item) { return Math.round(item.price * Math.pow(1.5, state.permBought[item.stat] || 0)); }
 
 /* ---------- ログ＆トースト ---------- */
 function log(msg, cls = "") {
@@ -313,21 +339,61 @@ function gather(areaId, nodeId) {
    戦闘
    ========================================================= */
 
-function startBattle(areaId) {
+function startBattle(areaId, kind = "normal") {
   const area = AREAS.find(a => a.id === areaId);
-  const m = area.monsters[rand(0, area.monsters.length - 1)];
+  let m;
+  if (kind === "boss") m = area.boss;
+  else m = area.monsters[rand(0, area.monsters.length - 1)];
   const s = derivedStats();
-  // 戦闘開始時は HP/MP 全回復（1戦ごとに仕切り直し）
-  state.hp = s.maxHp; state.mp = s.maxMp;
+  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
   battle = {
-    areaId,
-    enemy: { ...m, maxHp: m.hp, hp: m.hp, statuses: [] },
-    defending: false, over: false, showSkills: false, busy: false,
+    areaId, kind,
+    enemy: { ...m, maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss: kind === "boss" },
+    defending: false, over: false, showSkills: false, showItems: false,
   };
-  log(`⚔ ${m.name}（弱点: ${elemLabel(m.weak)}）が現れた！`, "l-sys");
+  if (kind === "boss") log(`👑 ボス『${m.name}』が立ちはだかる！（弱点:${elemLabel(m.weak)} / 耐性:${elemLabel(m.resist)}）`, "l-bad");
+  else log(`⚔ ${m.name}（弱点:${elemLabel(m.weak)}${m.resist ? " / 耐性:" + elemLabel(m.resist) : ""}）が現れた！`, "l-sys");
   document.getElementById("area-list").classList.add("hidden");
-  renderBattle();
-  renderStatus();
+  renderBattle(); renderStatus();
+}
+
+// 状態異常の付与（敵にも自分にも使える）
+function inflict(target, name, kind, sourceAtk) {
+  if (!target.statuses) target.statuses = [];
+  const toPlayer = (target === state);
+  if (kind === "poison" || kind === "burn") {
+    const dmg = Math.max(2, Math.round(sourceAtk * (kind === "poison" ? 0.25 : 0.2)));
+    const ex = target.statuses.find(s => s.kind === kind);
+    if (ex) { ex.turns = Math.max(ex.turns, 3); ex.dmg = Math.max(ex.dmg, dmg); }
+    else target.statuses.push({ kind, dmg, turns: 3 });
+    log(`${name} は${kind === "poison" ? "毒" : "火傷"}状態になった！`, toPlayer ? "l-bad" : "l-good");
+  } else if (kind === "stun") {
+    const ex = target.statuses.find(s => s.kind === "stun");
+    if (ex) ex.turns = Math.max(ex.turns, 1);
+    else target.statuses.push({ kind: "stun", turns: 1 });
+    log(`${name} は痺れて動けなくなった！`, toPlayer ? "l-bad" : "l-good");
+  }
+}
+
+// 継続ダメージ処理（死亡したら true）
+function tickDoT(target, name) {
+  const toPlayer = (target === state);
+  for (const st of [...(target.statuses || [])]) {
+    if (st.kind === "poison" || st.kind === "burn") {
+      target.hp = Math.max(0, target.hp - st.dmg);
+      log(`${name} は${st.kind === "poison" ? "毒" : "火傷"}で ${st.dmg} ダメージ。`, toPlayer ? "l-bad" : "l-good");
+      st.turns--;
+    }
+  }
+  target.statuses = (target.statuses || []).filter(s => !((s.kind === "poison" || s.kind === "burn") && s.turns <= 0));
+  return target.hp <= 0;
+}
+
+// スタン消費（このターン動けないなら true）
+function consumeStun(target) {
+  const st = (target.statuses || []).find(s => s.kind === "stun");
+  if (st) { st.turns--; target.statuses = target.statuses.filter(s => !(s.kind === "stun" && s.turns <= 0)); return true; }
+  return false;
 }
 
 // 1ヒットを敵に与える
@@ -339,59 +405,31 @@ function dealHit(opts) {
   const mult = opts.mult != null ? opts.mult : 1;
   let def = e.def;
   if (opts.ignoreDef || wt.ignoreDef) def = 0;
-  else def = def * (1 - (opts.pierce || 0) - (wt.pierce || 0));
-  def = Math.max(0, def);
+  else def = Math.max(0, def * (1 - (opts.pierce || 0) - (wt.pierce || 0)));
 
   let dmg = ps.atk * mult - def;
 
-  // 属性の弱点
+  // 属性：弱点1.5倍 / 耐性0.5倍
   const elem = weaponElement();
-  let weak = false;
-  if (elem && e.weak === elem) { dmg *= 1.5; weak = true; }
+  let mark = "";
+  if (elem && e.weak === elem) { dmg *= 1.5; mark += ` ${elemLabel(elem)}弱点!`; }
+  else if (elem && e.resist === elem) { dmg *= 0.5; mark += ` ${elemLabel(elem)}耐性…`; }
 
   // 会心
   const critChance = (wt.crit || 0) + (opts.critBonus || 0);
   const crit = Math.random() < critChance;
-  if (crit) dmg *= 1.8;
+  if (crit) { dmg *= 1.8; mark = " ✨会心!" + mark; }
 
   dmg = Math.max(1, Math.round(dmg + rand(-2, 2)));
   e.hp = Math.max(0, e.hp - dmg);
-
-  let tag = "";
-  if (crit) tag += " ✨会心！";
-  if (weak) tag += ` ${elemLabel(elem)}弱点！`;
-  log(`${e.name} に ${dmg} ダメージ！${tag}`, crit || weak ? "l-good" : "");
+  log(`${e.name} に ${dmg} ダメージ！${mark}`, (crit || mark.includes("弱点")) ? "l-good" : "");
 
   // 状態異常付与
-  if (opts.inflict) applyStatus(e, opts.inflict);
-  if (wt.onCritStatus && crit) applyStatus(e, wt.onCritStatus);
-  if (elem) {
+  if (opts.inflict) inflict(e, e.name, opts.inflict, ps.atk);
+  if (wt.onCritStatus && crit) inflict(e, e.name, wt.onCritStatus, ps.atk);
+  if (elem && e.resist !== elem) {
     const chance = opts.forceStatus ? 1 : 0.25;
-    if (Math.random() < chance) applyStatus(e, elementStatus(elem), ps.atk);
-  }
-}
-
-function elementStatus(elem) {
-  if (elem === "fire") return "burn";
-  return "stun"; // ice / lightning
-}
-
-// 状態異常を付与
-function applyStatus(enemy, kind, atkRef) {
-  const ps = derivedStats();
-  const atk = atkRef || ps.atk;
-  if (kind === "poison" || kind === "burn") {
-    const dmg = Math.max(2, Math.round(atk * (kind === "poison" ? 0.25 : 0.2)));
-    const turns = 3;
-    const ex = enemy.statuses.find(s => s.kind === kind);
-    if (ex) { ex.turns = Math.max(ex.turns, turns); ex.dmg = Math.max(ex.dmg, dmg); }
-    else enemy.statuses.push({ kind, dmg, turns });
-    log(`${enemy.name} は${kind === "poison" ? "毒" : "火傷"}を負った！`, "l-good");
-  } else if (kind === "stun") {
-    const ex = enemy.statuses.find(s => s.kind === "stun");
-    if (ex) ex.turns = Math.max(ex.turns, 1);
-    else enemy.statuses.push({ kind: "stun", turns: 1 });
-    log(`${enemy.name} は痺れて動けなくなった！`, "l-good");
+    if (Math.random() < chance) inflict(e, e.name, elem === "fire" ? "burn" : "stun", ps.atk);
   }
 }
 
@@ -402,24 +440,17 @@ function playerHeal(frac) {
   log(`💚 ${amt} 回復した。`, "l-good");
 }
 
-// 戦闘コンテキスト（スキルから呼ぶ）
-const combatCtx = {
-  hit: (opts) => dealHit(opts || {}),
-  heal: (frac) => playerHeal(frac),
-};
+const combatCtx = { hit: (opts) => dealHit(opts || {}), heal: (frac) => playerHeal(frac) };
 
-// 通常攻撃
+/* --- プレイヤーの行動 --- */
 function actAttack() {
-  if (!battle || battle.over || battle.busy) return;
+  if (!battle || battle.over) return;
   const wt = weaponType();
-  const hits = wt.hits || 1;
-  for (let i = 0; i < hits; i++) dealHit({});
+  for (let i = 0; i < (wt.hits || 1); i++) dealHit({});
   finishPlayerAction();
 }
-
-// スキル使用
 function actSkill(skillId) {
-  if (!battle || battle.over || battle.busy) return;
+  if (!battle || battle.over) return;
   const sk = SKILLS[skillId];
   if (!sk) return;
   if (state.mp < sk.mp) { toast("MPが足りない"); return; }
@@ -429,57 +460,79 @@ function actSkill(skillId) {
   battle.showSkills = false;
   finishPlayerAction();
 }
-
-// 防御
 function actDefend() {
-  if (!battle || battle.over || battle.busy) return;
+  if (!battle || battle.over) return;
   battle.defending = true;
   const s = derivedStats();
   state.mp = Math.min(s.maxMp, state.mp + 5);
   log(`🛡 身を守る体勢をとった（被ダメ減＆MP回復）。`, "l-sys");
   finishPlayerAction();
 }
-
-// プレイヤー行動後 → 勝敗判定 → 敵ターン
-function finishPlayerAction() {
-  if (battle.enemy.hp <= 0) { winBattle(); return; }
-  enemyTurn();
+function actItem(itemId) {
+  if (!battle || battle.over) return;
+  if (itemQty(itemId) <= 0) return;
+  const it = SHOP_BY_ID[itemId];
+  const s = derivedStats();
+  if (itemId === "potion_hp") { const a = Math.round(s.maxHp * .5); state.hp = Math.min(s.maxHp, state.hp + a); log(`🧪 ${a} 回復した。`, "l-good"); }
+  else if (itemId === "potion_mp") { const a = Math.round(s.maxMp * .5); state.mp = Math.min(s.maxMp, state.mp + a); log(`🔵 MPを ${a} 回復した。`, "l-good"); }
+  else if (itemId === "elixir") { state.hp = s.maxHp; state.mp = s.maxMp; log(`✨ HP/MPが全回復した。`, "l-good"); }
+  else if (itemId === "antidote") { state.statuses = []; log(`💊 状態異常を治した。`, "l-good"); }
+  state.items[itemId] = itemQty(itemId) - 1;
+  battle.showItems = false;
+  toast(`${it.name} を使った`);
+  finishPlayerAction();
 }
 
-function enemyTurn() {
-  const e = battle.enemy;
-  // 状態異常（毒/火傷）のダメージ
-  for (const st of [...e.statuses]) {
-    if (st.kind === "poison" || st.kind === "burn") {
-      e.hp = Math.max(0, e.hp - st.dmg);
-      log(`${e.name} は${st.kind === "poison" ? "毒" : "火傷"}で ${st.dmg} ダメージ。`, "l-good");
-      st.turns--;
-    }
-  }
-  e.statuses = e.statuses.filter(s => !((s.kind === "poison" || s.kind === "burn") && s.turns <= 0));
-  if (e.hp <= 0) { winBattle(); return; }
+// プレイヤー行動後 → 勝敗判定 → 敵フェーズ
+function finishPlayerAction() {
+  if (battle.enemy.hp <= 0) { winBattle(); return; }
+  enemyPhase();
+}
 
-  // スタン判定
-  const stun = e.statuses.find(s => s.kind === "stun");
-  if (stun) {
+function enemyPhase() {
+  const e = battle.enemy;
+  // 敵の継続ダメージ
+  if (tickDoT(e, e.name)) { winBattle(); return; }
+
+  // ボスの怒り（HP30%以下で攻撃力UP）
+  if (e.isBoss && !e.enraged && e.hp <= e.maxHp * 0.3) {
+    e.enraged = true; e.atk = Math.round(e.atk * 1.3);
+    log(`👑 ${e.name} は怒り狂った！攻撃力が上がった！`, "l-bad");
+  }
+
+  // 敵のスタン判定
+  if (consumeStun(e)) {
     log(`${e.name} は痺れて動けない！`, "l-good");
-    stun.turns--;
-    e.statuses = e.statuses.filter(s => !(s.kind === "stun" && s.turns <= 0));
   } else {
-    // 敵の攻撃
     const ps = derivedStats();
     let edmg = Math.max(1, e.atk - ps.def + rand(-2, 2));
     if (battle.defending) edmg = Math.max(1, Math.round(edmg * 0.4));
     state.hp = Math.max(0, state.hp - edmg);
     log(`${e.name} の攻撃！ ${edmg} ダメージを受けた。`, "l-bad");
     if (state.hp <= 0) { loseBattle(); return; }
+    // 敵の状態異常付与
+    if (e.inflict && Math.random() < (e.inflictChance || 0.3)) {
+      inflict(state, "あなた", e.inflict, e.atk);
+    }
   }
 
-  // MP自然回復＆防御解除
   const s = derivedStats();
   state.mp = Math.min(s.maxMp, state.mp + 2);
   battle.defending = false;
+  startPlayerTurn();
+}
 
+// プレイヤーのターン開始（継続ダメージ・スタン処理）
+function startPlayerTurn() {
+  if (!battle || battle.over) return;
+  if (tickDoT(state, "あなた")) { loseBattle(); return; }
+  if (consumeStun(state)) {
+    log(`あなたは痺れて動けない！`, "l-bad");
+    renderBattle(); renderStatus(); save();
+    // 行動できないので敵のターンへ
+    enemyPhase();
+    return;
+  }
   renderBattle(); renderStatus(); save();
 }
 
@@ -498,8 +551,15 @@ function winBattle() {
   state.gold += e.gold;
   if (drops.length) log(`ドロップ: ${drops.join(" / ")}`, "l-good");
   log(`💰 ${e.gold}G を手に入れた。`, "l-gold");
+  if (battle.kind === "boss") {
+    const first = !state.bossCleared[battle.areaId];
+    state.bossCleared[battle.areaId] = true;
+    if (first) { log(`👑 ボス初撃破！`, "l-good"); }
+    toast(`ボス『${e.name}』を撃破！`);
+  } else {
+    toast(`${e.name} 撃破！ +${e.exp}EXP`);
+  }
   gainExp(e.exp);
-  toast(`${e.name} 撃破！ +${e.exp}EXP`);
   save();
   endBattleUI();
 }
@@ -511,7 +571,7 @@ function loseBattle() {
   state.gold -= lost;
   if (lost > 0) log(`動揺して ${lost}G を落とした。`, "l-gold");
   const s = derivedStats();
-  state.hp = s.maxHp; state.mp = s.maxMp;
+  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
   toast("やられてしまった…");
   save();
   endBattleUI();
@@ -519,6 +579,7 @@ function loseBattle() {
 
 function fleeBattle() {
   if (!battle) return;
+  if (battle.kind === "boss") { toast("ボス戦からは逃げられない！"); log("ボスからは逃げられない！", "l-bad"); return; }
   log(`🏃 ${battle.enemy.name} から逃げ出した。`, "l-sys");
   endBattleUI();
 }
@@ -532,7 +593,6 @@ function endBattleUI() {
 
 /* ---------- 作成 ---------- */
 function canCraft(recipe) { return Object.entries(recipe.cost).every(([m, q]) => matQty(m) >= q); }
-
 function craft(recipeId) {
   const r = RECIPE_BY_ID[recipeId];
   if (!canCraft(r)) { toast("素材が足りない"); return; }
@@ -544,7 +604,6 @@ function craft(recipeId) {
   gainExp(5);
   save(); renderAll();
 }
-
 function gearScore(r) {
   const s = r.stats || {};
   return (r.tier || 0) * 100 + (s.atk || 0) + (s.def || 0) + (s.hp || 0) * 0.3 + (s.mp || 0) * 0.3;
@@ -564,10 +623,29 @@ function equipItem(recipeId) {
   save(); renderAll();
 }
 
+/* ---------- お店 ---------- */
+function buyItem(id) {
+  const it = SHOP_BY_ID[id];
+  if (!it) return;
+  const price = it.kind === "perm" ? seedPrice(it) : it.price;
+  if (state.gold < price) { toast("ゴールドが足りない"); return; }
+  state.gold -= price;
+  if (it.kind === "consumable") {
+    state.items[id] = itemQty(id) + 1;
+    log(`🛒 ${it.name} を買った（-${price}G）`, "l-gold");
+  } else {
+    if (it.stat === "hp") state.perm.hp += it.val; else state.perm[it.stat] += it.val;
+    state.permBought[it.stat] = (state.permBought[it.stat] || 0) + 1;
+    clampVitals();
+    log(`🌱 ${it.name} を使った！ ${it.desc}（-${price}G）`, "l-good");
+  }
+  toast(`${it.name} を購入`);
+  save(); renderAll();
+}
+
 /* =========================================================
    レンダリング
    ========================================================= */
-
 function renderStatus() {
   clampVitals();
   const s = derivedStats();
@@ -591,25 +669,36 @@ function renderAreas() {
     const locked = state.level < a.reqLevel;
     const card = document.createElement("div");
     card.className = "area-card" + (locked ? " locked" : "");
+    const cleared = state.bossCleared[a.id];
     card.innerHTML = `
       <div class="area-info">
-        <h4>${a.icon} ${a.name}</h4>
+        <h4>${a.icon} ${a.name} ${cleared ? "👑✔" : ""}</h4>
         <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放` : a.desc}</div>
       </div>`;
-    const btn = document.createElement("button");
-    btn.className = "action";
-    btn.textContent = locked ? "未開放" : "戦いに行く";
-    btn.disabled = locked;
-    btn.onclick = () => startBattle(a.id);
-    card.appendChild(btn);
+    const btns = document.createElement("div");
+    btns.className = "area-btns";
+    const b1 = document.createElement("button");
+    b1.className = "action";
+    b1.textContent = locked ? "未開放" : "戦いに行く";
+    b1.disabled = locked;
+    b1.onclick = () => startBattle(a.id, "normal");
+    btns.appendChild(b1);
+    if (!locked && a.boss) {
+      const b2 = document.createElement("button");
+      b2.className = "action boss-btn";
+      b2.textContent = "👑 ボス";
+      b2.onclick = () => startBattle(a.id, "boss");
+      btns.appendChild(b2);
+    }
+    card.appendChild(btns);
     wrap.appendChild(card);
   }
 }
 
-function statusIcons(enemy) {
-  return enemy.statuses.map(s => {
-    if (s.kind === "poison") return `🟢×${s.turns}`;
-    if (s.kind === "burn") return `🔥×${s.turns}`;
+function statusIcons(holder) {
+  return (holder.statuses || []).map(s => {
+    if (s.kind === "poison") return `🟢${s.turns}`;
+    if (s.kind === "burn") return `🔥${s.turns}`;
     if (s.kind === "stun") return `💫`;
     return "";
   }).join(" ");
@@ -623,12 +712,13 @@ function renderBattle() {
   const e = battle.enemy;
   const wt = weaponType();
   const elem = weaponElement();
+  const pStatus = statusIcons(state);
 
   wrap.innerHTML = `
     <div class="combatants">
       <div class="fighter player">
         <div class="sprite">🧑‍🌾</div>
-        <div class="fname">あなた</div>
+        <div class="fname">あなた ${pStatus}</div>
         <div class="fbar"><div style="width:${state.hp / s.maxHp * 100}%"></div></div>
         <div class="sub">HP ${state.hp}/${s.maxHp}　MP ${state.mp}/${s.maxMp}</div>
         <div class="sub wmeta">${wt.name}${elem ? " " + elemLabel(elem) : ""}</div>
@@ -636,53 +726,58 @@ function renderBattle() {
       <div class="vs">VS</div>
       <div class="fighter enemy">
         <div class="sprite">${e.sprite}</div>
-        <div class="fname">${e.name}</div>
+        <div class="fname">${e.isBoss ? "👑" : ""}${e.name} ${statusIcons(e)}</div>
         <div class="fbar"><div style="width:${e.hp / e.maxHp * 100}%"></div></div>
         <div class="sub">HP ${e.hp}/${e.maxHp}</div>
-        <div class="sub">弱点 ${elemLabel(e.weak)} ${statusIcons(e)}</div>
+        <div class="sub">弱点 ${elemLabel(e.weak)}${e.resist ? "・耐性 " + elemLabel(e.resist) : ""}</div>
       </div>
     </div>
     <div class="battle-actions" id="battle-actions"></div>`;
 
   const actions = document.getElementById("battle-actions");
+  const mk = (label, fn, cls = "action", disabled = false) => {
+    const b = document.createElement("button");
+    b.className = cls; b.textContent = label; b.onclick = fn; b.disabled = disabled;
+    return b;
+  };
 
   if (battle.showSkills) {
     const skills = wt.skills || [];
     if (skills.length === 0) {
       const note = document.createElement("div");
-      note.className = "empty-note";
-      note.textContent = "この武器で使えるスキルはない。";
+      note.className = "empty-note"; note.textContent = "この武器で使えるスキルはない。";
       actions.appendChild(note);
     }
     for (const sid of skills) {
       const sk = SKILLS[sid];
       const b = document.createElement("button");
-      b.className = "action skill-btn";
-      b.disabled = state.mp < sk.mp;
+      b.className = "action skill-btn"; b.disabled = state.mp < sk.mp;
       b.innerHTML = `${sk.icon} ${sk.name} <span class="mpcost">MP${sk.mp}</span><span class="skdesc">${sk.desc}</span>`;
       b.onclick = () => actSkill(sid);
       actions.appendChild(b);
     }
-    const back = document.createElement("button");
-    back.className = "action secondary";
-    back.textContent = "↩ 戻る";
-    back.onclick = () => { battle.showSkills = false; renderBattle(); };
-    actions.appendChild(back);
-  } else {
-    const mk = (label, fn, cls = "action") => {
+    actions.appendChild(mk("↩ 戻る", () => { battle.showSkills = false; renderBattle(); }, "action secondary"));
+  } else if (battle.showItems) {
+    const consumables = SHOP.filter(x => x.kind === "consumable" && itemQty(x.id) > 0);
+    if (consumables.length === 0) {
+      const note = document.createElement("div");
+      note.className = "empty-note"; note.textContent = "使える道具がない。お店で買おう。";
+      actions.appendChild(note);
+    }
+    for (const it of consumables) {
       const b = document.createElement("button");
-      b.className = cls;
-      b.textContent = label;
-      b.onclick = fn;
-      return b;
-    };
+      b.className = "action skill-btn";
+      b.innerHTML = `${it.icon} ${it.name} <span class="mpcost">×${itemQty(it.id)}</span><span class="skdesc">${it.desc}</span>`;
+      b.onclick = () => actItem(it.id);
+      actions.appendChild(b);
+    }
+    actions.appendChild(mk("↩ 戻る", () => { battle.showItems = false; renderBattle(); }, "action secondary"));
+  } else {
     actions.appendChild(mk("⚔ 攻撃", actAttack));
-    const hasSkill = (wt.skills || []).length > 0;
-    const sb = mk("✨ スキル", () => { battle.showSkills = true; renderBattle(); });
-    sb.disabled = !hasSkill;
-    actions.appendChild(sb);
+    actions.appendChild(mk("✨ スキル", () => { battle.showSkills = true; renderBattle(); }, "action", (wt.skills || []).length === 0));
+    actions.appendChild(mk("🎒 道具", () => { battle.showItems = true; renderBattle(); }, "action"));
     actions.appendChild(mk("🛡 防御", actDefend, "action secondary"));
-    actions.appendChild(mk("🏃 逃げる", fleeBattle, "action secondary"));
+    actions.appendChild(mk("🏃 逃げる", fleeBattle, "action secondary", battle.kind === "boss"));
   }
 }
 
@@ -713,9 +808,7 @@ function renderGather() {
       <h4>${n.name}</h4>
       <div class="sub">採れる: ${yieldStr}<br>必要: ${toolName} ランク${n.tier}</div>`;
     const btn = document.createElement("button");
-    btn.className = "action";
-    btn.textContent = ok ? "採集する" : `${toolName}が足りない`;
-    btn.disabled = !ok;
+    btn.className = "action"; btn.textContent = ok ? "採集する" : `${toolName}が足りない`; btn.disabled = !ok;
     btn.onclick = () => gather(area.id, n.id);
     card.appendChild(btn);
     grid.appendChild(card);
@@ -745,12 +838,50 @@ function renderCraft() {
         <div class="cost">${costStr}</div>
       </div>`;
     const btn = document.createElement("button");
-    btn.className = "action";
-    btn.textContent = "作成";
-    btn.disabled = !ok;
+    btn.className = "action"; btn.textContent = "作成"; btn.disabled = !ok;
     btn.onclick = () => craft(r.id);
     card.appendChild(btn);
     wrap.appendChild(card);
+  }
+}
+
+function renderShop() {
+  const cWrap = document.getElementById("shop-consumable");
+  cWrap.innerHTML = "";
+  for (const it of SHOP.filter(x => x.kind === "consumable")) {
+    const card = document.createElement("div");
+    card.className = "recipe-card";
+    card.innerHTML = `
+      <div class="gicon">${it.icon}</div>
+      <div class="rinfo">
+        <h4>${it.name} <span class="ttag">所持 ×${itemQty(it.id)}</span></h4>
+        <div class="effect">${it.desc}</div>
+        <div class="cost">💰 ${it.price}G</div>
+      </div>`;
+    const btn = document.createElement("button");
+    btn.className = "action"; btn.textContent = "買う"; btn.disabled = state.gold < it.price;
+    btn.onclick = () => buyItem(it.id);
+    card.appendChild(btn);
+    cWrap.appendChild(card);
+  }
+  const pWrap = document.getElementById("shop-perm");
+  pWrap.innerHTML = "";
+  for (const it of SHOP.filter(x => x.kind === "perm")) {
+    const price = seedPrice(it);
+    const card = document.createElement("div");
+    card.className = "recipe-card";
+    card.innerHTML = `
+      <div class="gicon">${it.icon}</div>
+      <div class="rinfo">
+        <h4>${it.name} <span class="ttag">購入 ${state.permBought[it.stat] || 0} 回</span></h4>
+        <div class="effect">${it.desc}（買うほど高くなる）</div>
+        <div class="cost">💰 ${price}G</div>
+      </div>`;
+    const btn = document.createElement("button");
+    btn.className = "action"; btn.textContent = "買う"; btn.disabled = state.gold < price;
+    btn.onclick = () => buyItem(it.id);
+    card.appendChild(btn);
+    pWrap.appendChild(card);
   }
 }
 
@@ -791,13 +922,11 @@ function renderEquip() {
       </div>`;
     if (equipped) {
       const tag = document.createElement("span");
-      tag.className = "equipped-tag";
-      tag.textContent = "装備中";
+      tag.className = "equipped-tag"; tag.textContent = "装備中";
       card.appendChild(tag);
     } else {
       const btn = document.createElement("button");
-      btn.className = "action secondary";
-      btn.textContent = "装備する";
+      btn.className = "action secondary"; btn.textContent = "装備する";
       btn.onclick = () => equipItem(id);
       card.appendChild(btn);
     }
@@ -808,7 +937,7 @@ function renderEquip() {
 function renderBag() {
   const wrap = document.getElementById("material-list");
   wrap.innerHTML = "";
-  const entries = Object.entries(state.materials).filter(([, q]) => q > 0);
+  const entries = Object.keys(MATERIALS).filter(mid => matQty(mid) > 0);
   if (entries.length === 0) {
     wrap.innerHTML = `<div class="empty-note">素材を持っていない。「採集」や「探索」で集めよう。</div>`;
     return;
@@ -828,7 +957,7 @@ function renderBag() {
 
 function renderAll() {
   renderStatus(); renderAreas(); renderBattle();
-  renderGather(); renderCraft(); renderEquip(); renderBag();
+  renderGather(); renderCraft(); renderShop(); renderEquip(); renderBag();
 }
 
 /* ---------- タブ切替 ---------- */
