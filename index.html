@@ -50,7 +50,6 @@
   <!-- タブナビ -->
   <nav id="tabs">
     <button class="tab-btn active" data-tab="explore">🗺 探索</button>
-    <button class="tab-btn" data-tab="gather">⛏ 採集</button>
     <button class="tab-btn" data-tab="craft">🔨 作成</button>
     <button class="tab-btn" data-tab="equip">🎽 装備</button>
     <button class="tab-btn" data-tab="shop">🛒 店</button>
@@ -59,24 +58,11 @@
   </nav>
 
   <main id="content">
-    <!-- 探索（ワールドマップ → 2Dフィールド） -->
+    <!-- 探索（エリア選択＆コマンドバトル） -->
     <section id="tab-explore" class="tab-panel active">
       <h2 id="explore-title">探索するエリアを選ぶ</h2>
       <div id="area-list" class="area-list"></div>
       <div id="battle" class="battle hidden"></div>
-      <div id="field-wrap" class="hidden">
-        <div id="field-hud"></div>
-        <canvas id="field-canvas"></canvas>
-        <div id="field-controls"></div>
-      </div>
-    </section>
-
-    <!-- 採集 -->
-    <section id="tab-gather" class="tab-panel">
-      <h2>採集</h2>
-      <p class="hint">エリアを選んで、木・石・鉱石から素材を集めよう。良い道具ほどたくさん採れる。</p>
-      <div id="gather-area-list" class="chip-row"></div>
-      <div id="gather-nodes" class="node-grid"></div>
     </section>
 
     <!-- 作成 -->
@@ -152,7 +138,6 @@
 <script src="backgrounds.js"></script>
 <script src="sprites.js"></script>
 <script src="game.js"></script>
-<script src="field.js"></script>
 <script>
 /* ---- 初回タップで音を有効化＆BGM開始 ---- */
 window.addEventListener("pointerdown", function once() {

@@ -85,9 +85,9 @@ const AREAS = [
     ],
     monsters: [
       { name: "スライム", sprite: "🟢", hp: 18, atk: 4, def: 0, exp: 8, gold: 6, weak: "fire", resist: "ice",
-        drops: [{ mat: "gel", min: 1, max: 2, chance: .9 }] },
+        drops: [{ mat: "gel", min: 1, max: 2, chance: .9 }, { mat: "wood", min: 1, max: 2, chance: .7 }] },
       { name: "ホーンラビット", sprite: "🐰", hp: 24, atk: 6, def: 1, exp: 12, gold: 10, weak: "lightning",
-        drops: [{ mat: "pelt", min: 1, max: 1, chance: .7 }, { mat: "fang", min: 1, max: 1, chance: .3 }] },
+        drops: [{ mat: "pelt", min: 1, max: 1, chance: .7 }, { mat: "fang", min: 1, max: 1, chance: .3 }, { mat: "stone", min: 1, max: 2, chance: .7 }, { mat: "wood", min: 1, max: 2, chance: .5 }] },
     ],
     boss: { name: "キングスライム", sprite: "👑🟢", hp: 130, atk: 12, def: 4, exp: 90, gold: 70,
       phase2: { name: "キングスライム・覚醒", hp: 210, atk: 18, def: 6, inflict: "poison", inflictChance: .4 },
@@ -96,16 +96,16 @@ const AREAS = [
   },
   {
     id: "forest", name: "ささやきの森", icon: "🌳", reqLevel: 4,
-    desc: "硬い木材と手強い獣たち。斧があると効率的。",
+    desc: "硬い木材を落とす手強い獣たちの森。",
     nodes: [
       { id: "f-tree", name: "大樹", icon: "🌳", tool: "axe", tier: 1, yields: [{ mat: "wood", min: 2, max: 4, chance: 1 }, { mat: "hardwood", min: 1, max: 2, chance: .8 }] },
       { id: "f-rock", name: "苔むした岩", icon: "🪨", tool: "pickaxe", tier: 1, yields: [{ mat: "stone", min: 2, max: 3, chance: 1 }, { mat: "shard", min: 1, max: 1, chance: .25 }] },
     ],
     monsters: [
       { name: "ゴブリン", sprite: "👺", hp: 40, atk: 10, def: 3, exp: 22, gold: 16, weak: "fire", resist: "lightning",
-        drops: [{ mat: "fang", min: 1, max: 2, chance: .7 }, { mat: "shard", min: 1, max: 1, chance: .3 }] },
+        drops: [{ mat: "fang", min: 1, max: 2, chance: .7 }, { mat: "shard", min: 1, max: 1, chance: .3 }, { mat: "wood", min: 2, max: 3, chance: .8 }] },
       { name: "森オオカミ", sprite: "🐺", hp: 55, atk: 14, def: 4, exp: 30, gold: 22, weak: "ice",
-        drops: [{ mat: "pelt", min: 1, max: 3, chance: .9 }, { mat: "fang", min: 1, max: 2, chance: .6 }] },
+        drops: [{ mat: "pelt", min: 1, max: 3, chance: .9 }, { mat: "fang", min: 1, max: 2, chance: .6 }, { mat: "hardwood", min: 1, max: 2, chance: .6 }, { mat: "stone", min: 1, max: 2, chance: .5 }] },
     ],
     boss: { name: "ゴブリンキング", sprite: "👑👺", hp: 280, atk: 24, def: 9, exp: 200, gold: 160,
       phase2: { name: "ゴブリンロード", hp: 400, atk: 33, def: 13, inflict: "stun", inflictChance: .35 },
@@ -114,7 +114,7 @@ const AREAS = [
   },
   {
     id: "mountain", name: "嶮しい岩山", icon: "⛰️", reqLevel: 9,
-    desc: "鉄やクリスタルが眠る危険地帯。強いピッケルが必要。",
+    desc: "鉄やクリスタルを落とす強敵が待つ危険地帯。",
     nodes: [
       { id: "m-rock", name: "鉄鉱脈", icon: "⛏️", tool: "pickaxe", tier: 2, yields: [{ mat: "iron", min: 1, max: 3, chance: 1 }, { mat: "stone", min: 1, max: 2, chance: .8 }] },
       { id: "m-crystal", name: "輝く晶洞", icon: "💎", tool: "pickaxe", tier: 2, yields: [{ mat: "crystal", min: 1, max: 1, chance: .5 }, { mat: "shard", min: 1, max: 2, chance: .7 }] },
@@ -122,7 +122,7 @@ const AREAS = [
     ],
     monsters: [
       { name: "オーク", sprite: "👹", hp: 90, atk: 20, def: 8, exp: 45, gold: 35, weak: "ice", resist: "fire",
-        drops: [{ mat: "fang", min: 2, max: 3, chance: .8 }, { mat: "iron", min: 1, max: 2, chance: .4 }] },
+        drops: [{ mat: "fang", min: 2, max: 3, chance: .8 }, { mat: "iron", min: 1, max: 2, chance: .4 }, { mat: "hardwood", min: 1, max: 2, chance: .6 }] },
       { name: "ロックゴーレム", sprite: "🗿", hp: 140, atk: 26, def: 14, exp: 70, gold: 55, weak: "lightning", resist: "ice",
         drops: [{ mat: "stone", min: 3, max: 5, chance: 1 }, { mat: "iron", min: 1, max: 3, chance: .6 }, { mat: "crystal", min: 1, max: 1, chance: .25 }] },
     ],
@@ -140,7 +140,7 @@ const AREAS = [
     ],
     monsters: [
       { name: "ヘルハウンド", sprite: "🐕", hp: 200, atk: 34, def: 16, exp: 110, gold: 90, weak: "ice", resist: "fire", atkElement: "fire",
-        drops: [{ mat: "fang", min: 3, max: 5, chance: 1 }, { mat: "crystal", min: 1, max: 2, chance: .4 }] },
+        drops: [{ mat: "fang", min: 3, max: 5, chance: 1 }, { mat: "crystal", min: 1, max: 2, chance: .4 }, { mat: "hardwood", min: 2, max: 3, chance: .7 }] },
       { name: "炎竜ヴァルガ", sprite: "🐉", hp: 380, atk: 48, def: 24, exp: 260, gold: 220, weak: "ice", resist: "fire", inflict: "burn", inflictChance: .3, atkElement: "fire",
         drops: [{ mat: "mithril", min: 2, max: 4, chance: 1 }, { mat: "crystal", min: 2, max: 3, chance: .8 }] },
     ],
@@ -155,15 +155,6 @@ const AREAS = [
 const TOOL_TIER = { bare: 0, copper: 1, iron: 2, mithril: 3 };
 
 const RECIPES = [
-  // --- 道具：斧 ---
-  { id: "axe_copper", name: "銅の斧", icon: "🪓", type: "axe", tier: 1, cost: { wood: 3, stone: 2 }, desc: "森の大樹を伐れる。" },
-  { id: "axe_iron", name: "鉄の斧", icon: "🪓", type: "axe", tier: 2, cost: { hardwood: 2, iron: 3 }, desc: "古木すら伐り倒す。" },
-  { id: "axe_mithril", name: "ミスリルの斧", icon: "🪓", type: "axe", tier: 3, cost: { hardwood: 4, mithril: 2 }, desc: "あらゆる木を伐採可能。" },
-  // --- 道具：ピッケル ---
-  { id: "pick_copper", name: "銅のピッケル", icon: "⛏️", type: "pickaxe", tier: 1, cost: { wood: 2, stone: 3 }, desc: "森の岩を掘れる。" },
-  { id: "pick_iron", name: "鉄のピッケル", icon: "⛏️", type: "pickaxe", tier: 2, cost: { hardwood: 2, iron: 4 }, desc: "鉄鉱脈や晶洞を掘れる。" },
-  { id: "pick_mithril", name: "ミスリルのピッケル", icon: "⛏️", type: "pickaxe", tier: 3, cost: { iron: 5, mithril: 2 }, desc: "ミスリル鉱脈を掘れる。" },
-
   // --- 武器 ---
   { id: "w_wood_sword",  name: "木の剣",        icon: "🗡️", type: "weapon", wtype: "sword",  stats: { atk: 6 },          cost: { wood: 4 } },
   { id: "w_stone_axe",   name: "石の戦斧",      icon: "🪓",  type: "weapon", wtype: "axe",    stats: { atk: 9 },          cost: { wood: 3, stone: 5 } },
@@ -858,6 +849,7 @@ function winBattle() {
     if (Math.random() <= d.chance + (ps.dropBonus || 0)) {
       const amt = rand(d.min, d.max);
       addMat(d.mat, amt);
+      questTrack("gather", d.mat, amt); // 「集める」クエストはドロップで進む
       drops.push(`${MATERIALS[d.mat].icon}${MATERIALS[d.mat].name} ×${amt}`);
     }
   }
@@ -1030,8 +1022,8 @@ function renderAreas() {
     if (area) {
       const rep = document.createElement("button");
       rep.className = "action repeat-btn";
-      rep.textContent = `🔁 直前のエリアへ（${area.icon}${area.name}${lb.kind === "boss" ? " ボス" : ""}）`;
-      rep.onclick = () => enterField(lb.areaId, lb.kind);
+      rep.textContent = `🔁 直前と再戦（${area.icon}${area.name}${lb.kind === "boss" ? " ボス" : ""}）`;
+      rep.onclick = () => startBattle(lb.areaId, lb.kind);
       wrap.appendChild(rep);
     }
   }
@@ -1073,13 +1065,13 @@ function renderAreas() {
     const btns = document.createElement("div");
     btns.className = "area-btns";
     const b1 = document.createElement("button");
-    b1.className = "action"; b1.textContent = "🗺 入る";
-    b1.onclick = () => enterField(a.id, "normal");
+    b1.className = "action"; b1.textContent = "⚔ 戦いに行く";
+    b1.onclick = () => startBattle(a.id, "normal");
     btns.appendChild(b1);
     if (a.boss) {
       const b2 = document.createElement("button");
       b2.className = "action boss-btn"; b2.textContent = "👑 ボス";
-      b2.onclick = () => enterField(a.id, "boss");
+      b2.onclick = () => startBattle(a.id, "boss");
       btns.appendChild(b2);
     }
     det.appendChild(btns);
@@ -1335,7 +1327,6 @@ function enhTag(id) { const lv = enhanceLv(id); return lv > 0 ? ` <span class="e
 function renderEquip() {
   const slots = [
     { key: "weapon", label: "武器" }, { key: "armor", label: "防具" }, { key: "accessory", label: "装飾品" },
-    { key: "axe", label: "斧" }, { key: "pickaxe", label: "ピッケル" },
   ];
   const wrap = document.getElementById("equip-slots");
   wrap.innerHTML = "";
@@ -1580,7 +1571,7 @@ function renderSaveUI() {
 
 function renderAll() {
   renderStatus(); renderAreas(); renderBattle();
-  renderGather(); renderCraft(); renderShop(); renderEquip();
+  renderCraft(); renderShop(); renderEquip();
   renderRecord(); renderBag(); renderSettings(); renderSaveUI();
 }
 
@@ -1591,7 +1582,6 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-    if (typeof fieldOnTabChange === "function") fieldOnTabChange(btn.dataset.tab);
   };
 });
 
