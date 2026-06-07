@@ -23,6 +23,8 @@ const MATERIALS = {
   shard:     { name: "魔石のかけら",  icon: "🟣" },
   crystal:   { name: "クリスタル",    icon: "💎" },
   soul:      { name: "ボスの魂",      icon: "🔆" },
+  stardust:  { name: "星屑",          icon: "✨" },
+  darkcry:   { name: "闇の結晶",      icon: "🟪" },
 };
 
 /* ---------- 属性 ---------- */
@@ -149,6 +151,34 @@ const AREAS = [
       phase2: { name: "古龍ヴァルガ＝レクス【真】", hp: 1600, atk: 82, def: 36, atkElement: "fire", inflict: "burn", inflictChance: .55 },
       drops: [{ mat: "mithril", min: 5, max: 8, chance: 1 }, { mat: "crystal", min: 3, max: 5, chance: 1 }, { mat: "soul", min: 3, max: 5, chance: 1 }] },
   },
+  {
+    id: "sky", name: "天空回廊", icon: "🌥️", reqLevel: 22,
+    desc: "雲上に浮かぶ古の回廊。星屑をまとう天の眷属が舞う。",
+    monsters: [
+      { name: "ハーピー", sprite: "🦅", hp: 300, atk: 46, def: 20, exp: 320, gold: 180, weak: "lightning", resist: "ice",
+        drops: [{ mat: "fang", min: 3, max: 5, chance: 1 }, { mat: "stardust", min: 1, max: 2, chance: .6 }, { mat: "pelt", min: 2, max: 3, chance: .7 }] },
+      { name: "ガーゴイル", sprite: "🗿", hp: 420, atk: 52, def: 34, exp: 400, gold: 220, weak: "lightning", resist: "fire",
+        drops: [{ mat: "stone", min: 4, max: 6, chance: 1 }, { mat: "crystal", min: 1, max: 2, chance: .6 }, { mat: "stardust", min: 1, max: 2, chance: .7 }] },
+    ],
+    boss: { name: "熾天使セラフ", sprite: "👑😇", hp: 2400, atk: 78, def: 40, exp: 2000, gold: 1400,
+      weak: "fire", resist: "lightning", inflict: "stun", inflictChance: .4, atkElement: "lightning",
+      phase2: { name: "熾天使セラフ【堕】", hp: 3200, atk: 104, def: 46, atkElement: "lightning", inflict: "stun", inflictChance: .5 },
+      drops: [{ mat: "stardust", min: 4, max: 7, chance: 1 }, { mat: "crystal", min: 3, max: 5, chance: 1 }, { mat: "soul", min: 3, max: 5, chance: 1 }] },
+  },
+  {
+    id: "castle", name: "煉獄の魔王城", icon: "🏰", reqLevel: 30,
+    desc: "全ての元凶、魔王アバドンが座す城。闇の結晶が脈打つ。",
+    monsters: [
+      { name: "リッチ", sprite: "💀", hp: 520, atk: 64, def: 30, exp: 560, gold: 300, weak: "fire", resist: "ice",
+        drops: [{ mat: "shard", min: 3, max: 5, chance: 1 }, { mat: "darkcry", min: 1, max: 2, chance: .6 }, { mat: "crystal", min: 1, max: 2, chance: .6 }] },
+      { name: "デーモン", sprite: "👿", hp: 640, atk: 74, def: 38, exp: 680, gold: 360, weak: "lightning", resist: "fire", atkElement: "fire",
+        drops: [{ mat: "fang", min: 4, max: 6, chance: 1 }, { mat: "darkcry", min: 1, max: 3, chance: .7 }, { mat: "mithril", min: 1, max: 2, chance: .5 }] },
+    ],
+    boss: { name: "魔王アバドン", sprite: "👑😈", hp: 4200, atk: 100, def: 50, exp: 5000, gold: 4000,
+      weak: "ice", resist: "fire", inflict: "burn", inflictChance: .45, atkElement: "fire",
+      phase2: { name: "魔王アバドン・真", hp: 6000, atk: 132, def: 58, atkElement: "fire", inflict: "burn", inflictChance: .6 },
+      drops: [{ mat: "darkcry", min: 6, max: 10, chance: 1 }, { mat: "mithril", min: 4, max: 6, chance: 1 }, { mat: "soul", min: 5, max: 8, chance: 1 }] },
+  },
 ];
 
 /* ---------- レシピ ---------- */
@@ -176,6 +206,11 @@ const RECIPES = [
   // --- 武器：ボス素材(魂)で作る最強クラス ---
   { id: "w_soul_blade",  name: "英雄の聖剣",    icon: "⚔️", type: "weapon", wtype: "sword",  element: "lightning", stats: { atk: 60 }, cost: { mithril: 4, soul: 5, crystal: 3 } },
   { id: "w_soul_staff",  name: "破滅の魔杖",    icon: "🪄",  type: "weapon", wtype: "staff",  element: "ice",  stats: { atk: 55, mp: 24 }, cost: { soul: 5, crystal: 4, shard: 6 } },
+  // --- 武器：天空・魔王素材の超上位 ---
+  { id: "w_star_bow",    name: "星詠みの弓",    icon: "🏹",  type: "weapon", wtype: "bow",    element: "lightning", stats: { atk: 78 }, cost: { stardust: 6, soul: 4, crystal: 4 } },
+  { id: "w_star_lance",  name: "天穹の槍",      icon: "🔱",  type: "weapon", wtype: "spear",  element: "ice",  stats: { atk: 88 }, cost: { stardust: 8, mithril: 4, soul: 4 } },
+  { id: "w_abyss_blade", name: "魔王の魔剣",    icon: "⚔️", type: "weapon", wtype: "sword",  element: "fire", stats: { atk: 110 }, cost: { darkcry: 8, soul: 6, mithril: 5 } },
+  { id: "w_abyss_scythe",name: "終焉の大鎌",    icon: "🪓",  type: "weapon", wtype: "axe",    element: "fire", stats: { atk: 130 }, cost: { darkcry: 10, soul: 8, stardust: 4 } },
 
   // --- 防具 ---
   { id: "a_leather", name: "革の鎧",       icon: "🦺", type: "armor", stats: { def: 4, hp: 10 },        cost: { pelt: 4 }, desc: "DEF +4 / 最大HP +10" },
@@ -186,6 +221,8 @@ const RECIPES = [
   { id: "a_crystal", name: "クリスタルメイル", icon: "🛡️", type: "armor", stats: { def: 26, hp: 60 },  cost: { iron: 4, crystal: 2, shard: 4 }, desc: "DEF +26 / 最大HP +60" },
   { id: "a_dragon", name: "竜鱗の鎧",      icon: "🛡️", type: "armor", stats: { def: 40, hp: 100 },     cost: { mithril: 4, crystal: 2, pelt: 6 }, desc: "DEF +40 / 最大HP +100" },
   { id: "a_soul", name: "守護神の鎧",      icon: "🛡️", type: "armor", stats: { def: 55, hp: 160, mp: 20 }, cost: { soul: 5, mithril: 3, crystal: 3 }, desc: "DEF +55 / HP +160 / MP +20" },
+  { id: "a_star", name: "星天の聖衣",      icon: "🛡️", type: "armor", stats: { def: 70, hp: 220, mp: 40 }, cost: { stardust: 8, soul: 5, mithril: 4 }, desc: "DEF +70 / HP +220 / MP +40" },
+  { id: "a_abyss", name: "魔王の漆黒鎧",   icon: "🛡️", type: "armor", stats: { def: 95, hp: 320, mp: 30 }, cost: { darkcry: 10, soul: 8, mithril: 6 }, desc: "DEF +95 / HP +320 / MP +30" },
 
   // --- アクセサリ（accessory枠） ---
   { id: "acc_power",  name: "力の指輪",     icon: "💍", type: "accessory", stats: { atk: 6 },              cost: { iron: 3, shard: 2 } },
@@ -197,15 +234,17 @@ const RECIPES = [
   { id: "acc_fireward", name: "炎耐性の護符", icon: "🟥", type: "accessory", stats: { resist: { fire: 0.4 } },      cost: { fang: 5, crystal: 1 } },
   { id: "acc_allward",  name: "万象の護符",   icon: "🔰", type: "accessory", stats: { resist: { fire: 0.25, ice: 0.25, lightning: 0.25 } }, cost: { crystal: 3, soul: 1 } },
   { id: "acc_hero",   name: "英雄の証",     icon: "🏅", type: "accessory", stats: { atk: 12, def: 12, crit: 0.08 }, cost: { soul: 3, crystal: 2 } },
+  { id: "acc_star",   name: "星辰のアミュレット", icon: "✨", type: "accessory", stats: { atk: 20, crit: 0.15, mp: 30 }, cost: { stardust: 6, soul: 3 } },
+  { id: "acc_abyss",  name: "魔王の指輪",   icon: "💍", type: "accessory", stats: { atk: 25, def: 25, crit: 0.12, dropBonus: 0.2 }, cost: { darkcry: 6, soul: 5 } },
   { id: "acc_collector", name: "コレクターの勲章", icon: "🎖️", type: "accessory", stats: { atk: 15, def: 15, crit: 0.1, dropBonus: 0.2 }, cost: { soul: 30 }, rewardOnly: true },
 ];
 
 /* ---------- 図鑑コンプ報酬 ---------- */
-const DEX_TOTAL = 12; // 通常8＋ボス4
+const DEX_TOTAL = 18; // 通常12＋ボス6
 const DEX_MILESTONES = [
-  { n: 4,  reward: { gold: 200, items: { elixir: 1 } } },
-  { n: 8,  reward: { gold: 600, mats: { soul: 2 } } },
-  { n: 12, reward: { gold: 2000, owned: "acc_collector" } },
+  { n: 6,  reward: { gold: 400, items: { elixir: 1 } } },
+  { n: 12, reward: { gold: 1500, mats: { soul: 3 } } },
+  { n: 18, reward: { gold: 5000, owned: "acc_collector" } },
 ];
 function dexCount() { return Object.keys(state.dex).length; }
 function checkDexRewards() {
@@ -235,6 +274,8 @@ const SETS = [
   { name: "魔導士", pieces: ["w_sage_staff", "a_mage_robe"], bonus: { mp: 20, crit: 0.05 } },
   { name: "竜の力", pieces: ["w_dragon_sword", "a_dragon"], bonus: { atk: 15, def: 15, resist: { fire: 0.5 } } },
   { name: "英雄", pieces: ["w_soul_blade", "a_soul", "acc_hero"], bonus: { atk: 25, def: 25, hp: 80, crit: 0.1, resist: { fire: 0.3, ice: 0.3, lightning: 0.3 } } },
+  { name: "星天", pieces: ["w_star_lance", "a_star", "acc_star"], bonus: { atk: 40, mp: 50, crit: 0.15, resist: { lightning: 0.5 } } },
+  { name: "魔王", pieces: ["w_abyss_blade", "a_abyss", "acc_abyss"], bonus: { atk: 60, def: 40, hp: 200, crit: 0.15, resist: { fire: 0.5, ice: 0.3, lightning: 0.3 } } },
 ];
 function activeSets() {
   const eq = [state.equipped.weapon, state.equipped.armor, state.equipped.accessory].filter(Boolean);
@@ -289,6 +330,9 @@ const QUESTS = [
   { id: "q_golem",  name: "岩を砕く者",         type: "kill",   target: "ロックゴーレム", count: 8,  reward: { gold: 320, mats: { crystal: 2 } } },
   { id: "q_boss3",  name: "討伐：ゴーレムロード", type: "boss", target: "ゴーレムロード",  count: 1,  reward: { gold: 500, mats: { soul: 2 } } },
   { id: "q_dragon", name: "竜殺し",             type: "boss",   target: "古龍ヴァルガ＝レクス", count: 1, reward: { gold: 1500, mats: { soul: 4, crystal: 3 } } },
+  { id: "q_star",   name: "星屑を集める者",     type: "gather", mat: "stardust",          count: 20, reward: { gold: 2000, mats: { soul: 3 } } },
+  { id: "q_seraph", name: "討伐：熾天使セラフ", type: "boss",   target: "熾天使セラフ",   count: 1,  reward: { gold: 3000, mats: { stardust: 5 } } },
+  { id: "q_demon",  name: "魔王討伐",           type: "boss",   target: "魔王アバドン",   count: 1,  reward: { gold: 10000, mats: { darkcry: 6, soul: 6 } } },
 ];
 function questProgress(q) { return state.questProg[q.id] || 0; }
 function questDone(q) { return questProgress(q) >= q.count; }
