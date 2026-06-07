@@ -1441,13 +1441,17 @@ function renderEquip() {
     gearWrap.innerHTML = `<div class="empty-note">まだ何も作っていない。「作成」タブで装備や道具を作ろう。</div>`;
     return;
   }
-  for (const id of state.owned) {
+  const typeLabel = { weapon: "武器", armor: "防具", accessory: "装飾品" };
+  // 種類ごとに並べる（武器→防具→装飾品）
+  const ord = { weapon: 0, armor: 1, accessory: 2 };
+  const ownedSorted = [...state.owned].filter(id => RECIPE_BY_ID[id]).sort((a, b) => (ord[RECIPE_BY_ID[a].type] ?? 9) - (ord[RECIPE_BY_ID[b].type] ?? 9));
+  for (const id of ownedSorted) {
     const r = RECIPE_BY_ID[id];
     const slot = r.type === "weapon" ? "weapon" : r.type === "armor" ? "armor" : r.type;
     const equipped = state.equipped[slot] === id;
     const canEnhance = ["weapon", "armor", "accessory"].includes(r.type);
     const card = document.createElement("div");
-    card.className = "gear-card";
+    card.className = "gear-card" + (equipped ? " equipped" : "");
     let effText = gearEffectText(r);
     if (canEnhance && enhanceLv(id) > 0) {
       const s = gearStats(id);
@@ -1456,19 +1460,21 @@ function renderEquip() {
     card.innerHTML = `
       <div class="gicon">${r.icon}</div>
       <div class="ginfo">
-        <h4>${r.name}${enhTag(id)}</h4>
+        <h4>${r.name}${enhTag(id)} <span class="ttag">[${typeLabel[r.type] || ""}]</span></h4>
         <div class="effect">${effText}</div>
       </div>`;
+    // カード自体タップでも装備（強化ボタン等は除く）
+    if (!equipped) { card.style.cursor = "pointer"; card.onclick = () => equipItem(id); }
     const btns = document.createElement("div");
     btns.className = "gear-btns";
     if (equipped) {
       const tag = document.createElement("span");
-      tag.className = "equipped-tag"; tag.textContent = "装備中";
+      tag.className = "equipped-tag"; tag.textContent = "✔ 装備中";
       btns.appendChild(tag);
     } else {
       const btn = document.createElement("button");
-      btn.className = "action secondary"; btn.textContent = "装備";
-      btn.onclick = () => equipItem(id);
+      btn.className = "action"; btn.textContent = "装備する";
+      btn.onclick = (e) => { e.stopPropagation(); equipItem(id); };
       btns.appendChild(btn);
     }
     if (canEnhance) {
@@ -1483,7 +1489,7 @@ function renderEquip() {
         eb.className = "action enh-btn";
         eb.innerHTML = `⚒ 強化+${lv + 1}<span class="enh-cost">💰${c.gold} ${MATERIALS[c.mat].icon}${c.matN}</span>`;
         eb.disabled = state.gold < c.gold || matQty(c.mat) < c.matN;
-        eb.onclick = () => enhance(id);
+        eb.onclick = (e) => { e.stopPropagation(); enhance(id); };
         btns.appendChild(eb);
       }
     }
