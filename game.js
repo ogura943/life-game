@@ -338,7 +338,7 @@ function newGame() {
     equipped: { weapon: null, armor: null, accessory: null, axe: null, pickaxe: null },
     bossCleared: {}, dex: {}, dexClaimed: {}, questProg: {}, questClaimed: {},
     settings: { sound: true, bgm: false, craftableOnly: false },
-    lastBattle: null,
+    lastBattle: null, gauntlet: null,
     currentGatherArea: "grassland",
   };
 }
@@ -360,6 +360,7 @@ function migrateSave(s) {
   s.questProg = s.questProg || {};
   s.questClaimed = s.questClaimed || {};
   s.settings = Object.assign({ sound: true, bgm: false, craftableOnly: false }, s.settings);
+  s.gauntlet = null; // 連戦は途中保存しない（リロードで中断）
   return s;
 }
 function readSlot(i) {
@@ -612,6 +613,56 @@ function startBattle(areaId, kind = "normal") {
   state.lastBattle = { areaId, kind };
   if (kind === "boss") { log(`👑 ボス『${m.name}』が立ちはだかる！（弱点:${elemLabel(m.weak)} / 耐性:${elemLabel(m.resist)}）`, "l-bad"); sfx("boss"); }
   else { log(`⚔ ${m.name}（弱点:${elemLabel(m.weak)}${m.resist ? " / 耐性:" + elemLabel(m.resist) : ""}）が現れた！`, "l-sys"); }
+  document.getElementById("area-list").classList.add("hidden");
+  renderBattle(); renderStatus();
+}
+
+/* ---------- 連戦（全10ステージ：5=中ボス, 10=大ボス） ---------- */
+const GAUNTLET_STAGES = 10;
+function stageEnemy(area, stage) {
+  if (stage === GAUNTLET_STAGES) { // 大ボス
+    return Object.assign({}, area.boss, { _kind: "boss" });
+  }
+  if (stage === 5) { // 中ボス：エリアの強モンスターを強化
+    const base = area.monsters[area.monsters.length - 1];
+    return Object.assign({}, base, {
+      _kind: "mid", name: base.name + "・強", baseName: base.name, art: ART_BY_NAME[base.name],
+      hp: Math.round(base.hp * 2.3), atk: Math.round(base.atk * 1.35), def: Math.round(base.def * 1.2) + 1,
+      exp: base.exp * 3, gold: base.gold * 3, drops: base.drops,
+    });
+  }
+  const base = area.monsters[rand(0, area.monsters.length - 1)];
+  const hpF = 1 + (stage - 1) * 0.06, atkF = 1 + (stage - 1) * 0.035;
+  return Object.assign({}, base, {
+    _kind: "normal", baseName: base.name, art: ART_BY_NAME[base.name],
+    hp: Math.round(base.hp * hpF), atk: Math.round(base.atk * atkF),
+  });
+}
+function startGauntlet(areaId) {
+  const area = AREAS.find(a => a.id === areaId);
+  if (!area) return;
+  if (state.level < area.reqLevel) { toast("まだ挑戦できない"); return; }
+  state.lastBattle = { areaId, kind: "gauntlet" };
+  const s = derivedStats();
+  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
+  state.gauntlet = { areaId, stage: 1 };
+  log(`🏁 ${area.name} 全${GAUNTLET_STAGES}ステージに挑戦！（5=中ボス / 10=大ボス）`, "l-sys");
+  spawnStage();
+}
+function spawnStage() {
+  const g = state.gauntlet; if (!g) return;
+  const area = AREAS.find(a => a.id === g.areaId);
+  const stage = g.stage;
+  const m = stageEnemy(area, stage);
+  const isBoss = m._kind === "boss";
+  battle = {
+    areaId: area.id, kind: isBoss ? "boss" : "normal", gauntlet: true, stage, midboss: m._kind === "mid",
+    enemy: { ...m, baseName: m.baseName || m.name, art: m.art || enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss },
+    defending: false, over: false, showSkills: false, showItems: false,
+  };
+  if (isBoss) { log(`👑 ステージ${stage}：大ボス『${m.name}』！`, "l-bad"); sfx("boss"); }
+  else if (m._kind === "mid") { log(`⭐ ステージ${stage}：中ボス『${m.name}』！`, "l-bad"); sfx("boss"); }
+  else log(`⚔ ステージ${stage}/${GAUNTLET_STAGES}：${m.name} が現れた！`, "l-sys");
   document.getElementById("area-list").classList.add("hidden");
   renderBattle(); renderStatus();
 }
@@ -873,6 +924,31 @@ function winBattle() {
   checkDexRewards();
   sfx("win");
   gainExp(e.exp);
+  // 連戦：次のステージへ or 全クリア
+  if (battle.gauntlet && state.gauntlet) {
+    const g = state.gauntlet;
+    if (g.stage >= GAUNTLET_STAGES) {
+      const area = AREAS.find(a => a.id === g.areaId);
+      const bonus = 120 + area.reqLevel * 25;
+      state.gold += bonus;
+      log(`🏆 全${GAUNTLET_STAGES}ステージ制覇！ クリアボーナス 💰${bonus}G！`, "l-good");
+      toast("🏆 ステージ制覇！");
+      sfx("level");
+      state.gauntlet = null;
+      save();
+      setTimeout(endBattleUI, 1000);
+    } else {
+      g.stage++;
+      const s = derivedStats();
+      const hh = Math.round(s.maxHp * 0.2), mh = Math.round(s.maxMp * 0.3);
+      state.hp = Math.min(s.maxHp, state.hp + hh);
+      state.mp = Math.min(s.maxMp, state.mp + mh);
+      log(`▶ ステージ ${g.stage}/${GAUNTLET_STAGES} へ！（HP+${hh} MP+${mh} 回復）`, "l-sys");
+      save();
+      setTimeout(() => { if (state.gauntlet) spawnStage(); }, 850);
+    }
+    return;
+  }
   save();
   setTimeout(endBattleUI, 700);
 }
@@ -880,7 +956,10 @@ function winBattle() {
 function loseBattle() {
   battle.over = true;
   renderBattle(); flushFx();
-  log(`💀 倒れてしまった…拠点に戻った。`, "l-bad");
+  const wasGauntlet = !!battle.gauntlet;
+  const stage = battle.stage;
+  state.gauntlet = null;
+  log(wasGauntlet ? `💀 ステージ${stage}で力尽きた…拠点に戻った。` : `💀 倒れてしまった…拠点に戻った。`, "l-bad");
   const lost = Math.floor(state.gold * 0.15);
   state.gold -= lost;
   if (lost > 0) log(`動揺して ${lost}G を落とした。`, "l-gold");
@@ -894,6 +973,14 @@ function loseBattle() {
 
 function fleeBattle() {
   if (!battle) return;
+  if (battle.gauntlet) {
+    if (!confirm("挑戦を中断して拠点に戻りますか？（途中のステージ報酬は獲得済み）")) return;
+    log("🏳 連戦を中断した。", "l-sys");
+    state.gauntlet = null;
+    sfx("flee");
+    endBattleUI();
+    return;
+  }
   if (battle.kind === "boss") { toast("ボス戦からは逃げられない！"); log("ボスからは逃げられない！", "l-bad"); sfx("deny"); return; }
   log(`🏃 ${battle.enemy.name} から逃げ出した。`, "l-sys");
   sfx("flee");
@@ -1022,8 +1109,8 @@ function renderAreas() {
     if (area) {
       const rep = document.createElement("button");
       rep.className = "action repeat-btn";
-      rep.textContent = `🔁 直前と再戦（${area.icon}${area.name}${lb.kind === "boss" ? " ボス" : ""}）`;
-      rep.onclick = () => startBattle(lb.areaId, lb.kind);
+      rep.textContent = `🔁 ${area.icon}${area.name} に再挑戦（連戦）`;
+      rep.onclick = () => startGauntlet(lb.areaId);
       wrap.appendChild(rep);
     }
   }
@@ -1060,20 +1147,15 @@ function renderAreas() {
   const locked = state.level < a.reqLevel;
   det.innerHTML = `
     <h4>${a.icon} ${a.name} ${state.bossCleared[a.id] ? "👑✔" : ""}</h4>
-    <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放` : a.desc}</div>`;
+    <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放` : a.desc}</div>
+    <div class="sub">${locked ? "" : `🏁 全${GAUNTLET_STAGES}連戦：ステージ5＝⭐中ボス / 10＝👑大ボス`}</div>`;
   if (!locked) {
     const btns = document.createElement("div");
     btns.className = "area-btns";
     const b1 = document.createElement("button");
-    b1.className = "action"; b1.textContent = "⚔ 戦いに行く";
-    b1.onclick = () => startBattle(a.id, "normal");
+    b1.className = "action"; b1.textContent = "⚔ 挑戦する（連戦）";
+    b1.onclick = () => startGauntlet(a.id);
     btns.appendChild(b1);
-    if (a.boss) {
-      const b2 = document.createElement("button");
-      b2.className = "action boss-btn"; b2.textContent = "👑 ボス";
-      b2.onclick = () => startBattle(a.id, "boss");
-      btns.appendChild(b2);
-    }
     det.appendChild(btns);
   }
   wrap.appendChild(det);
@@ -1098,7 +1180,11 @@ function renderBattle() {
   const elem = weaponElement();
   const pStatus = statusIcons(state);
 
+  const stageBanner = battle.gauntlet
+    ? `<div class="stage-banner">🏁 ステージ ${battle.stage}/${GAUNTLET_STAGES}${battle.midboss ? " ⭐中ボス" : ""}${battle.kind === "boss" ? " 👑大ボス" : ""}</div>`
+    : "";
   wrap.innerHTML = `
+    ${stageBanner}
     <div class="battle-scene" style="background-image:url(${(typeof BG !== "undefined" && BG[battle.areaId]) || ""})">
     <div class="combatants">
       <div class="fighter player">
@@ -1111,7 +1197,7 @@ function renderBattle() {
       <div class="vs">VS</div>
       <div class="fighter enemy">
         <div class="sprite">${spriteMarkup(e.art || enemyArtKey(e), e.isBoss)}</div>
-        <div class="fname">${e.isBoss ? "👑" : ""}${e.name} ${statusIcons(e)}</div>
+        <div class="fname">${e.isBoss ? "👑" : battle.midboss ? "⭐" : ""}${e.name} ${statusIcons(e)}</div>
         <div class="fbar"><div style="width:${e.hp / e.maxHp * 100}%"></div></div>
         <div class="sub">HP ${e.hp}/${e.maxHp}</div>
         <div class="sub">弱点 ${elemLabel(e.weak)}${e.resist ? "・耐性 " + elemLabel(e.resist) : ""}</div>
@@ -1163,7 +1249,9 @@ function renderBattle() {
     actions.appendChild(mk("✨ スキル", () => { battle.showSkills = true; renderBattle(); }, "action", (wt.skills || []).length === 0));
     actions.appendChild(mk("🎒 道具", () => { battle.showItems = true; renderBattle(); }, "action"));
     actions.appendChild(mk("🛡 防御", actDefend, "action secondary"));
-    actions.appendChild(mk("🏃 逃げる", fleeBattle, "action secondary", battle.kind === "boss"));
+    const fleeLabel = battle.gauntlet ? "🏳 中断" : "🏃 逃げる";
+    const fleeDisabled = !battle.gauntlet && battle.kind === "boss";
+    actions.appendChild(mk(fleeLabel, fleeBattle, "action secondary", fleeDisabled));
     const autoBtn = mk(battle.auto ? "🔁 オート:ON" : "🔁 オート", () => {
       battle.auto = !battle.auto; renderBattle();
       if (battle.auto && !battle.over) setTimeout(() => { if (battle && !battle.over && battle.auto) actAttack(); }, 300);
