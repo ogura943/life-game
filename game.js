@@ -1030,8 +1030,8 @@ function renderAreas() {
     if (area) {
       const rep = document.createElement("button");
       rep.className = "action repeat-btn";
-      rep.textContent = `🔁 直前と再戦（${area.icon}${area.name}${lb.kind === "boss" ? " ボス" : ""}）`;
-      rep.onclick = () => startBattle(lb.areaId, lb.kind);
+      rep.textContent = `🔁 直前のエリアへ（${area.icon}${area.name}${lb.kind === "boss" ? " ボス" : ""}）`;
+      rep.onclick = () => enterField(lb.areaId, lb.kind);
       wrap.appendChild(rep);
     }
   }
@@ -1073,13 +1073,13 @@ function renderAreas() {
     const btns = document.createElement("div");
     btns.className = "area-btns";
     const b1 = document.createElement("button");
-    b1.className = "action"; b1.textContent = "⚔ 戦いに行く";
-    b1.onclick = () => startBattle(a.id, "normal");
+    b1.className = "action"; b1.textContent = "🗺 入る";
+    b1.onclick = () => enterField(a.id, "normal");
     btns.appendChild(b1);
     if (a.boss) {
       const b2 = document.createElement("button");
       b2.className = "action boss-btn"; b2.textContent = "👑 ボス";
-      b2.onclick = () => startBattle(a.id, "boss");
+      b2.onclick = () => enterField(a.id, "boss");
       btns.appendChild(b2);
     }
     det.appendChild(btns);
@@ -1591,6 +1591,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    if (typeof fieldOnTabChange === "function") fieldOnTabChange(btn.dataset.tab);
   };
 });
 

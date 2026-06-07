@@ -59,11 +59,16 @@
   </nav>
 
   <main id="content">
-    <!-- 探索（エリア選択＆戦闘） -->
+    <!-- 探索（ワールドマップ → 2Dフィールド） -->
     <section id="tab-explore" class="tab-panel active">
-      <h2>探索するエリアを選ぶ</h2>
+      <h2 id="explore-title">探索するエリアを選ぶ</h2>
       <div id="area-list" class="area-list"></div>
       <div id="battle" class="battle hidden"></div>
+      <div id="field-wrap" class="hidden">
+        <div id="field-hud"></div>
+        <canvas id="field-canvas"></canvas>
+        <div id="field-controls"></div>
+      </div>
     </section>
 
     <!-- 採集 -->
@@ -147,6 +152,7 @@
 <script src="backgrounds.js"></script>
 <script src="sprites.js"></script>
 <script src="game.js"></script>
+<script src="field.js"></script>
 <script>
 /* ---- 初回タップで音を有効化＆BGM開始 ---- */
 window.addEventListener("pointerdown", function once() {

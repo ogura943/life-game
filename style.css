@@ -340,6 +340,49 @@ button.secondary { background: var(--panel-2); color: var(--text); }
 /* --- 図鑑進捗 --- */
 .dex-progress { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
 
+/* --- 2Dフィールド --- */
+#field-wrap { margin-top: 4px; }
+#field-hud {
+  background: var(--panel);
+  border-radius: 10px 10px 0 0;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+#field-hud .fh-top { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; }
+#field-hud .fh-bar { display: flex; align-items: center; gap: 6px; }
+#field-hud .fh-label { font-size: 11px; color: var(--muted); width: 22px; }
+#field-hud .fh-txt { font-size: 11px; color: var(--muted); min-width: 56px; text-align: right; }
+#field-canvas {
+  display: block;
+  width: 100%;
+  background: #1b1f2a;
+  border-left: 1px solid #333a4f;
+  border-right: 1px solid #333a4f;
+  touch-action: none;
+  cursor: pointer;
+}
+#field-controls {
+  display: flex;
+  gap: 8px;
+  background: var(--panel);
+  border-radius: 0 0 10px 10px;
+  padding: 8px 10px;
+}
+#field-controls .action { flex: 1; }
+.field-items {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--panel);
+  border-radius: 10px;
+}
+.field-items .action { flex: 0 0 auto; }
+.field-items.hidden { display: none; }
+
 /* --- 戦闘背景 --- */
 .battle-scene {
   border-radius: 12px;
