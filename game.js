@@ -136,13 +136,13 @@ const AREAS = [
       { id: "v-crystal", name: "竜晶", icon: "💎", tool: "pickaxe", tier: 3, yields: [{ mat: "crystal", min: 1, max: 2, chance: .8 }] },
     ],
     monsters: [
-      { name: "ヘルハウンド", sprite: "🐕", hp: 200, atk: 34, def: 16, exp: 110, gold: 90, weak: "ice", resist: "fire",
+      { name: "ヘルハウンド", sprite: "🐕", hp: 200, atk: 34, def: 16, exp: 110, gold: 90, weak: "ice", resist: "fire", atkElement: "fire",
         drops: [{ mat: "fang", min: 3, max: 5, chance: 1 }, { mat: "crystal", min: 1, max: 2, chance: .4 }] },
-      { name: "炎竜ヴァルガ", sprite: "🐉", hp: 380, atk: 48, def: 24, exp: 260, gold: 220, weak: "ice", resist: "fire", inflict: "burn", inflictChance: .3,
+      { name: "炎竜ヴァルガ", sprite: "🐉", hp: 380, atk: 48, def: 24, exp: 260, gold: 220, weak: "ice", resist: "fire", inflict: "burn", inflictChance: .3, atkElement: "fire",
         drops: [{ mat: "mithril", min: 2, max: 4, chance: 1 }, { mat: "crystal", min: 2, max: 3, chance: .8 }] },
     ],
     boss: { name: "古龍ヴァルガ＝レクス", sprite: "👑🐲", hp: 1100, atk: 62, def: 30, exp: 1200, gold: 900,
-      weak: "ice", resist: "fire", inflict: "burn", inflictChance: .45,
+      weak: "ice", resist: "fire", inflict: "burn", inflictChance: .45, atkElement: "fire",
       drops: [{ mat: "mithril", min: 5, max: 8, chance: 1 }, { mat: "crystal", min: 3, max: 5, chance: 1 }, { mat: "soul", min: 3, max: 5, chance: 1 }] },
   },
 ];
@@ -199,8 +199,22 @@ const RECIPES = [
   { id: "acc_mana",   name: "知恵の指輪",   icon: "💍", type: "accessory", stats: { mp: 22 },              cost: { shard: 5, crystal: 1 } },
   { id: "acc_lucky",  name: "幸運のお守り", icon: "🍀", type: "accessory", stats: { dropBonus: 0.25 },     cost: { gel: 5, crystal: 1 } },
   { id: "acc_ward",   name: "抵抗のお守り", icon: "🧿", type: "accessory", stats: { guard: 0.6 },          cost: { gel: 6, shard: 4 } },
+  { id: "acc_fireward", name: "炎耐性の護符", icon: "🟥", type: "accessory", stats: { resist: { fire: 0.4 } },      cost: { fang: 5, crystal: 1 } },
+  { id: "acc_allward",  name: "万象の護符",   icon: "🔰", type: "accessory", stats: { resist: { fire: 0.25, ice: 0.25, lightning: 0.25 } }, cost: { crystal: 3, soul: 1 } },
   { id: "acc_hero",   name: "英雄の証",     icon: "🏅", type: "accessory", stats: { atk: 12, def: 12, crit: 0.08 }, cost: { soul: 3, crystal: 2 } },
 ];
+
+/* ---------- セット装備の効果 ---------- */
+const SETS = [
+  { name: "鉄装備", pieces: ["w_iron_sword", "a_iron"], bonus: { atk: 5, def: 5 } },
+  { name: "魔導士", pieces: ["w_sage_staff", "a_mage_robe"], bonus: { mp: 20, crit: 0.05 } },
+  { name: "竜の力", pieces: ["w_dragon_sword", "a_dragon"], bonus: { atk: 15, def: 15, resist: { fire: 0.5 } } },
+  { name: "英雄", pieces: ["w_soul_blade", "a_soul", "acc_hero"], bonus: { atk: 25, def: 25, hp: 80, crit: 0.1, resist: { fire: 0.3, ice: 0.3, lightning: 0.3 } } },
+];
+function activeSets() {
+  const eq = [state.equipped.weapon, state.equipped.armor, state.equipped.accessory].filter(Boolean);
+  return SETS.filter(s => s.pieces.every(p => eq.includes(p)));
+}
 
 function statBadges(s) {
   const p = [];
@@ -211,6 +225,7 @@ function statBadges(s) {
   if (s.crit) p.push(`会心率 +${Math.round(s.crit * 100)}%`);
   if (s.guard) p.push(`状態異常耐性 ${Math.round(s.guard * 100)}%`);
   if (s.dropBonus) p.push(`ドロップ/G +${Math.round(s.dropBonus * 100)}%`);
+  if (s.resist) for (const [el, v] of Object.entries(s.resist)) p.push(`${ELEMENTS[el].icon}耐性 +${Math.round(v * 100)}%`);
   return p.join(" / ");
 }
 function gearEffectText(r) {
@@ -283,8 +298,11 @@ function claimQuest(id) {
 
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map(r => [r.id, r]));
 
-/* ---------- セーブ＆ステート ---------- */
-const SAVE_KEY = "fantasy-life-save-v2";
+/* ---------- セーブ＆ステート（複数スロット対応） ---------- */
+const SAVE_PREFIX = "fantasy-life-save-v2";
+const META_KEY = SAVE_PREFIX + ".meta";
+const NUM_SLOTS = 3;
+let currentSlot = 0;
 const BASE_STATS = { atk: 5, def: 2, maxHp: 30, maxMp: 10 };
 
 function newGame() {
@@ -303,28 +321,91 @@ function newGame() {
 let state = loadGame();
 let battle = null;
 
-function loadGame() {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) {
-      const s = Object.assign(newGame(), JSON.parse(raw));
-      // 後方互換：欠けている入れ子を補完
-      s.items = s.items || {};
-      s.enhance = s.enhance || {};
-      s.perm = Object.assign({ atk: 0, def: 0, hp: 0 }, s.perm);
-      s.permBought = Object.assign({ atk: 0, def: 0, hp: 0 }, s.permBought);
-      s.equipped = Object.assign({ weapon: null, armor: null, accessory: null, axe: null, pickaxe: null }, s.equipped);
-      s.bossCleared = s.bossCleared || {};
-      s.dex = s.dex || {};
-      s.questProg = s.questProg || {};
-      s.questClaimed = s.questClaimed || {};
-      s.settings = Object.assign({ sound: true, bgm: false, craftableOnly: false }, s.settings);
-      return s;
-    }
-  } catch (e) {}
-  return newGame();
+function slotKey(i) { return SAVE_PREFIX + ".s" + i; }
+// 欠けている入れ子を補完
+function migrateSave(s) {
+  s.items = s.items || {};
+  s.enhance = s.enhance || {};
+  s.perm = Object.assign({ atk: 0, def: 0, hp: 0 }, s.perm);
+  s.permBought = Object.assign({ atk: 0, def: 0, hp: 0 }, s.permBought);
+  s.equipped = Object.assign({ weapon: null, armor: null, accessory: null, axe: null, pickaxe: null }, s.equipped);
+  s.bossCleared = s.bossCleared || {};
+  s.dex = s.dex || {};
+  s.questProg = s.questProg || {};
+  s.questClaimed = s.questClaimed || {};
+  s.settings = Object.assign({ sound: true, bgm: false, craftableOnly: false }, s.settings);
+  return s;
 }
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {} }
+function readSlot(i) {
+  try {
+    const raw = localStorage.getItem(slotKey(i));
+    if (raw) return migrateSave(Object.assign(newGame(), JSON.parse(raw)));
+  } catch (e) {}
+  return null;
+}
+function loadGame() {
+  // 現在のスロットをメタから取得
+  try {
+    const meta = JSON.parse(localStorage.getItem(META_KEY));
+    if (meta && typeof meta.current === "number") currentSlot = meta.current;
+  } catch (e) {}
+  // 旧セーブ（プレフィックス直下）をスロット0へ移行
+  try {
+    const legacy = localStorage.getItem(SAVE_PREFIX);
+    if (legacy && !localStorage.getItem(slotKey(0))) localStorage.setItem(slotKey(0), legacy);
+  } catch (e) {}
+  return readSlot(currentSlot) || newGame();
+}
+function save() {
+  try {
+    localStorage.setItem(slotKey(currentSlot), JSON.stringify(state));
+    localStorage.setItem(META_KEY, JSON.stringify({ current: currentSlot }));
+  } catch (e) {}
+}
+function slotSummary(i) {
+  try {
+    const raw = localStorage.getItem(slotKey(i));
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return { level: d.level || 1, gold: d.gold || 0, area: d.lastBattle ? d.lastBattle.areaId : null };
+  } catch (e) { return null; }
+}
+function switchSlot(i) {
+  if (i === currentSlot) return;
+  save();
+  currentSlot = i;
+  state = readSlot(i) || newGame();
+  battle = null;
+  clampVitals();
+  save();
+  log(`スロット${i + 1} に切り替えた。`, "l-sys");
+  toast(`スロット${i + 1}`);
+  renderAll();
+}
+function deleteSlot(i) {
+  if (!confirm(`スロット${i + 1} のデータを消しますか？`)) return;
+  try { localStorage.removeItem(slotKey(i)); } catch (e) {}
+  if (i === currentSlot) { state = newGame(); battle = null; save(); }
+  log(`スロット${i + 1} を削除した。`, "l-sys");
+  renderAll();
+}
+function exportSave() {
+  try { return btoa(unescape(encodeURIComponent(JSON.stringify(state)))); } catch (e) { return ""; }
+}
+function importSave(code) {
+  try {
+    const obj = JSON.parse(decodeURIComponent(escape(atob((code || "").trim()))));
+    if (!obj || typeof obj.level !== "number") return false;
+    state = migrateSave(Object.assign(newGame(), obj));
+    battle = null;
+    clampVitals();
+    save();
+    log("セーブデータを読み込んだ。", "l-good");
+    toast("インポート成功！");
+    renderAll();
+    return true;
+  } catch (e) { return false; }
+}
 
 /* ---------- 計算ヘルパー ---------- */
 function expToNext(level) { return Math.floor(10 * Math.pow(level, 1.5)); }
@@ -339,6 +420,7 @@ function gearStats(id) {
   const out = {};
   for (const k of ["atk", "def", "hp", "mp"]) if (base[k]) out[k] = Math.round(base[k] * f);
   for (const k of ["crit", "guard", "dropBonus"]) if (base[k]) out[k] = base[k];
+  if (base.resist) out.resist = base.resist;
   return out;
 }
 
@@ -348,15 +430,24 @@ function derivedStats() {
   let maxHp = BASE_STATS.maxHp + (state.level - 1) * 8 + (state.perm.hp || 0);
   let maxMp = BASE_STATS.maxMp + (state.level - 1) * 2;
   let crit = 0, guard = 0, dropBonus = 0;
+  const resist = { fire: 0, ice: 0, lightning: 0 };
   for (const slot of ["weapon", "armor", "accessory"]) {
     const id = state.equipped[slot];
     if (id && RECIPE_BY_ID[id]) {
       const s = gearStats(id);
       atk += s.atk || 0; def += s.def || 0; maxHp += s.hp || 0; maxMp += s.mp || 0;
       crit += s.crit || 0; guard += s.guard || 0; dropBonus += s.dropBonus || 0;
+      if (s.resist) for (const k in s.resist) resist[k] += s.resist[k];
     }
   }
-  return { atk, def, maxHp, maxMp, crit, guard, dropBonus };
+  // セット効果
+  for (const set of activeSets()) {
+    const b = set.bonus;
+    atk += b.atk || 0; def += b.def || 0; maxHp += b.hp || 0; maxMp += b.mp || 0; crit += b.crit || 0;
+    if (b.resist) for (const k in b.resist) resist[k] += b.resist[k];
+  }
+  for (const k in resist) resist[k] = Math.min(0.8, resist[k]);
+  return { atk, def, maxHp, maxMp, crit, guard, dropBonus, resist };
 }
 
 function equippedWeapon() { const id = state.equipped.weapon; return id ? RECIPE_BY_ID[id] : null; }
@@ -464,6 +555,16 @@ function spawnPop(ev) {
   setTimeout(() => pop.remove(), 700);
   const sprite = host.querySelector(".sprite-inner");
   if (sprite && ev.heal == null) { sprite.classList.remove("shake"); void sprite.offsetWidth; sprite.classList.add("shake"); }
+  // 攻撃側を踏み込ませる（被弾側の逆）
+  if (ev.dmg != null) {
+    const attackerSel = ev.who === "enemy" ? ".fighter.player" : ".fighter.enemy";
+    const atk = document.querySelector("#battle " + attackerSel + " .sprite-inner");
+    if (atk) {
+      const cls2 = ev.who === "enemy" ? "lunge-right" : "lunge-left";
+      atk.classList.remove("lunge-right", "lunge-left"); void atk.offsetWidth; atk.classList.add(cls2);
+      setTimeout(() => atk.classList.remove(cls2), 320);
+    }
+  }
   if (ev.who === "player" && ev.dmg != null) {
     const b = document.getElementById("battle");
     if (b) { b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 260); }
@@ -647,8 +748,16 @@ function enemyPhase() {
     const ps = derivedStats();
     let edmg = Math.max(1, e.atk - ps.def + rand(-2, 2));
     if (battle.defending) edmg = Math.max(1, Math.round(edmg * 0.4));
+    // 属性攻撃はプレイヤーの耐性で軽減
+    let elemNote = "";
+    if (e.atkElement && ps.resist && ps.resist[e.atkElement] > 0) {
+      edmg = Math.max(1, Math.round(edmg * (1 - ps.resist[e.atkElement])));
+      elemNote = ` ${elemLabel(e.atkElement)}を軽減!`;
+    } else if (e.atkElement) {
+      elemNote = ` ${elemLabel(e.atkElement)}属性`;
+    }
     state.hp = Math.max(0, state.hp - edmg);
-    log(`${e.name} の攻撃！ ${edmg} ダメージを受けた。`, "l-bad");
+    log(`${e.name} の攻撃！ ${edmg} ダメージを受けた。${elemNote}`, "l-bad");
     pushFx({ who: "player", dmg: edmg });
     sfx("enemyhit");
     if (state.hp <= 0) { loseBattle(); return; }
@@ -912,6 +1021,7 @@ function renderBattle() {
   const pStatus = statusIcons(state);
 
   wrap.innerHTML = `
+    <div class="battle-scene" style="background-image:url(${(typeof BG !== "undefined" && BG[battle.areaId]) || ""})">
     <div class="combatants">
       <div class="fighter player">
         <div class="sprite">${spriteMarkup("hero", false)}</div>
@@ -928,6 +1038,7 @@ function renderBattle() {
         <div class="sub">HP ${e.hp}/${e.maxHp}</div>
         <div class="sub">弱点 ${elemLabel(e.weak)}${e.resist ? "・耐性 " + elemLabel(e.resist) : ""}</div>
       </div>
+    </div>
     </div>
     <div class="battle-actions" id="battle-actions"></div>`;
 
@@ -1152,6 +1263,17 @@ function renderEquip() {
       <div class="slot-item ${r ? "" : "empty"}">${r ? r.icon + " " + r.name + enhTag(id) : "なし"}</div>`;
     wrap.appendChild(div);
   }
+  // セット効果＆属性耐性の表示
+  const setBox = document.getElementById("set-info");
+  if (setBox) {
+    const sets = activeSets();
+    const ps = derivedStats();
+    const resParts = Object.entries(ps.resist).filter(([, v]) => v > 0).map(([el, v]) => `${ELEMENTS[el].icon}${Math.round(v * 100)}%`);
+    let html = "";
+    if (sets.length) html += sets.map(s => `<div class="set-active">✨ セット効果【${s.name}】発動中：${statBadges(s.bonus)}</div>`).join("");
+    if (resParts.length) html += `<div class="resist-line">属性耐性：${resParts.join(" / ")}</div>`;
+    setBox.innerHTML = html;
+  }
   const gearWrap = document.getElementById("owned-gear");
   gearWrap.innerHTML = "";
   if (state.owned.length === 0) {
@@ -1308,10 +1430,42 @@ function renderSettings() {
   wrap.appendChild(mk("🎵 BGM", "bgm", () => { if (typeof toggleBgm === "function") toggleBgm(); }));
 }
 
+function renderSaveUI() {
+  const box = document.getElementById("slot-box");
+  if (!box) return;
+  box.innerHTML = "";
+  for (let i = 0; i < NUM_SLOTS; i++) {
+    const sum = slotSummary(i);
+    const card = document.createElement("div");
+    card.className = "slot-card" + (i === currentSlot ? " current" : "");
+    card.innerHTML = `
+      <div class="slot-sum">
+        <b>スロット${i + 1}${i === currentSlot ? "（使用中）" : ""}</b>
+        <span class="sub">${sum ? `Lv.${sum.level} ・ 💰${fmt(sum.gold)}` : "（空き）"}</span>
+      </div>`;
+    const btns = document.createElement("div");
+    btns.className = "slot-card-btns";
+    if (i !== currentSlot) {
+      const sel = document.createElement("button");
+      sel.className = "action secondary"; sel.textContent = sum ? "切替" : "新規";
+      sel.onclick = () => switchSlot(i);
+      btns.appendChild(sel);
+    }
+    if (sum) {
+      const del = document.createElement("button");
+      del.className = "action secondary slot-del"; del.textContent = "🗑";
+      del.onclick = () => deleteSlot(i);
+      btns.appendChild(del);
+    }
+    card.appendChild(btns);
+    box.appendChild(card);
+  }
+}
+
 function renderAll() {
   renderStatus(); renderAreas(); renderBattle();
   renderGather(); renderCraft(); renderShop(); renderEquip();
-  renderRecord(); renderBag(); renderSettings();
+  renderRecord(); renderBag(); renderSettings(); renderSaveUI();
 }
 
 /* ---------- タブ切替 ---------- */
@@ -1332,6 +1486,24 @@ document.getElementById("reset-btn").onclick = () => {
     renderAll();
   }
 };
+
+/* ---------- エクスポート／インポート ---------- */
+{
+  const exp = document.getElementById("export-btn");
+  const imp = document.getElementById("import-btn");
+  const ta = document.getElementById("save-code");
+  if (exp) exp.onclick = () => {
+    ta.value = exportSave();
+    ta.select();
+    try { document.execCommand && document.execCommand("copy"); } catch (e) {}
+    toast("セーブコードをコピーした");
+  };
+  if (imp) imp.onclick = () => {
+    if (!ta.value.trim()) { toast("コードを貼り付けてね"); return; }
+    if (!confirm("現在のスロットに上書きします。よろしいですか？")) return;
+    if (!importSave(ta.value)) toast("コードが正しくありません");
+  };
+}
 
 /* ---------- 起動 ---------- */
 clampVitals();

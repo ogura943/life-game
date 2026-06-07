@@ -1,10 +1,11 @@
 /* Service Worker: オフラインでもアプリのように起動できるようにキャッシュする */
-const CACHE = "fantasy-life-v6";
+const CACHE = "fantasy-life-v7";
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./audio.js",
+  "./backgrounds.js",
   "./sprites.js",
   "./game.js",
   "./manifest.json",

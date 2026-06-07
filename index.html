@@ -85,6 +85,7 @@
     <section id="tab-equip" class="tab-panel">
       <h2>装備</h2>
       <div id="equip-slots" class="equip-slots"></div>
+      <div id="set-info"></div>
       <h3>所持している装備・道具</h3>
       <div id="owned-gear" class="gear-list"></div>
     </section>
@@ -116,6 +117,15 @@
       <div id="material-list" class="material-list"></div>
       <h3>設定</h3>
       <div id="settings-box"></div>
+      <h3>セーブ管理（スロット）</h3>
+      <div id="slot-box" class="slot-box"></div>
+      <h3>セーブのバックアップ</h3>
+      <p class="hint">コードをコピーして保存すれば、別の端末やリセット後に復元できます。</p>
+      <textarea id="save-code" class="save-code" placeholder="ここにセーブコードが表示されます／貼り付けてインポート"></textarea>
+      <div class="save-actions">
+        <button id="export-btn" class="action secondary">📤 エクスポート</button>
+        <button id="import-btn" class="action">📥 インポート</button>
+      </div>
       <button id="reset-btn" class="danger-btn">最初からやり直す</button>
     </section>
   </main>
@@ -132,6 +142,7 @@
 </div>
 
 <script src="audio.js"></script>
+<script src="backgrounds.js"></script>
 <script src="sprites.js"></script>
 <script src="game.js"></script>
 <script>
