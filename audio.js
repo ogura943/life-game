@@ -74,6 +74,12 @@ function sfx(name) {
     case "lose":    [392, 330, 262].forEach((f, i) => tone(f, i * 0.12, 0.22, "sawtooth", 0.16)); break;
     case "boss":    tone(70, 0, 0.6, "sawtooth", 0.22, 50); tone(105, 0, 0.6, "sawtooth", 0.16); noise(0, 0.5, 0.12, 300); break;
     case "quest":   [784, 988, 1319].forEach((f, i) => tone(f, i * 0.1, 0.18, "triangle", 0.16)); break;
+    case "cast":    tone(440, 0, 0.1, "sine", 0.14, 880); tone(660, 0.08, 0.14, "sine", 0.12, 1100); break;
+    case "guard":   tone(330, 0, 0.14, "sine", 0.16); noise(0.02, 0.08, 0.08, 400); break;
+    case "equip":   tone(587, 0, 0.05, "square", 0.12); tone(880, 0.05, 0.07, "square", 0.12); break;
+    case "flee":    noise(0, 0.22, 0.14, 700); tone(500, 0, 0.2, "sine", 0.1, 200); break;
+    case "deny":    tone(200, 0, 0.12, "square", 0.14, 140); break;
+    case "transform": tone(60, 0, 0.8, "sawtooth", 0.24, 120); tone(90, 0, 0.8, "sawtooth", 0.18, 160); noise(0, 0.7, 0.16, 350); [330,392,494].forEach((f,i)=>tone(f,0.3+i*0.1,0.25,"square",0.12)); break;
   }
 }
 

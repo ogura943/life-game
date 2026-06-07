@@ -302,6 +302,44 @@ button.secondary { background: var(--panel-2); color: var(--text); }
 .dex-info h4 { margin: 0 0 2px; font-size: 13px; }
 .dex-info .sub { font-size: 10px; color: var(--muted); line-height: 1.4; }
 
+/* --- ワールドマップ風エリア選択 --- */
+.world-map {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding: 8px 2px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.map-node {
+  position: relative;
+  flex: 0 0 auto;
+  width: 92px;
+  height: 64px;
+  border-radius: 12px;
+  border: 2px solid #3a4258;
+  background: #2a3045 center/cover no-repeat;
+  image-rendering: pixelated;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  color: #fff;
+}
+.map-node.sel { border-color: var(--accent-2); box-shadow: 0 0 0 2px var(--accent-2), 0 3px 10px rgba(0,0,0,.4); transform: translateY(-2px); }
+.map-node.locked { filter: grayscale(.7) brightness(.6); cursor: not-allowed; }
+.map-name { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.55); font-size: 11px; font-weight: 700; padding: 2px 3px; text-shadow: 0 1px 2px #000; }
+.map-lock { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+.map-crown { position: absolute; top: 2px; right: 4px; font-size: 15px; }
+.map-conn { flex: 0 0 auto; width: 16px; height: 4px; background: var(--accent); border-radius: 2px; }
+.map-conn.locked { background: #3a4258; }
+.area-detail { background: var(--panel); border: 1px solid #333a4f; border-radius: 12px; padding: 12px 14px; }
+.area-detail h4 { margin: 0 0 4px; font-size: 16px; }
+.area-detail .sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+.area-detail .area-btns { margin-top: 4px; }
+
+/* --- 図鑑進捗 --- */
+.dex-progress { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+
 /* --- 戦闘背景 --- */
 .battle-scene {
   border-radius: 12px;

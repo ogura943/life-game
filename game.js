@@ -84,12 +84,13 @@ const AREAS = [
       { id: "g-rock", name: "石ころ", icon: "🪨", tool: "pickaxe", tier: 0, yields: [{ mat: "stone", min: 1, max: 2, chance: 1 }] },
     ],
     monsters: [
-      { name: "スライム", sprite: "🟢", hp: 18, atk: 4, def: 0, exp: 6, gold: 5, weak: "fire", resist: "ice",
+      { name: "スライム", sprite: "🟢", hp: 18, atk: 4, def: 0, exp: 8, gold: 6, weak: "fire", resist: "ice",
         drops: [{ mat: "gel", min: 1, max: 2, chance: .9 }] },
-      { name: "ホーンラビット", sprite: "🐰", hp: 24, atk: 6, def: 1, exp: 9, gold: 8, weak: "lightning",
+      { name: "ホーンラビット", sprite: "🐰", hp: 24, atk: 6, def: 1, exp: 12, gold: 10, weak: "lightning",
         drops: [{ mat: "pelt", min: 1, max: 1, chance: .7 }, { mat: "fang", min: 1, max: 1, chance: .3 }] },
     ],
     boss: { name: "キングスライム", sprite: "👑🟢", hp: 130, atk: 12, def: 4, exp: 90, gold: 70,
+      phase2: { name: "キングスライム・覚醒", hp: 210, atk: 18, def: 6, inflict: "poison", inflictChance: .4 },
       weak: "fire", resist: "ice", inflict: "poison", inflictChance: .35,
       drops: [{ mat: "gel", min: 4, max: 6, chance: 1 }, { mat: "shard", min: 1, max: 2, chance: .8 }, { mat: "soul", min: 1, max: 1, chance: 1 }] },
   },
@@ -101,12 +102,13 @@ const AREAS = [
       { id: "f-rock", name: "苔むした岩", icon: "🪨", tool: "pickaxe", tier: 1, yields: [{ mat: "stone", min: 2, max: 3, chance: 1 }, { mat: "shard", min: 1, max: 1, chance: .25 }] },
     ],
     monsters: [
-      { name: "ゴブリン", sprite: "👺", hp: 40, atk: 10, def: 3, exp: 18, gold: 14, weak: "fire", resist: "lightning",
+      { name: "ゴブリン", sprite: "👺", hp: 40, atk: 10, def: 3, exp: 22, gold: 16, weak: "fire", resist: "lightning",
         drops: [{ mat: "fang", min: 1, max: 2, chance: .7 }, { mat: "shard", min: 1, max: 1, chance: .3 }] },
-      { name: "森オオカミ", sprite: "🐺", hp: 55, atk: 14, def: 4, exp: 26, gold: 20, weak: "ice",
+      { name: "森オオカミ", sprite: "🐺", hp: 55, atk: 14, def: 4, exp: 30, gold: 22, weak: "ice",
         drops: [{ mat: "pelt", min: 1, max: 3, chance: .9 }, { mat: "fang", min: 1, max: 2, chance: .6 }] },
     ],
     boss: { name: "ゴブリンキング", sprite: "👑👺", hp: 280, atk: 24, def: 9, exp: 200, gold: 160,
+      phase2: { name: "ゴブリンロード", hp: 400, atk: 33, def: 13, inflict: "stun", inflictChance: .35 },
       weak: "fire", resist: "lightning", inflict: "stun", inflictChance: .3,
       drops: [{ mat: "iron", min: 2, max: 4, chance: 1 }, { mat: "shard", min: 2, max: 3, chance: 1 }, { mat: "soul", min: 1, max: 2, chance: 1 }] },
   },
@@ -125,6 +127,7 @@ const AREAS = [
         drops: [{ mat: "stone", min: 3, max: 5, chance: 1 }, { mat: "iron", min: 1, max: 3, chance: .6 }, { mat: "crystal", min: 1, max: 1, chance: .25 }] },
     ],
     boss: { name: "ゴーレムロード", sprite: "👑🗿", hp: 560, atk: 36, def: 20, exp: 460, gold: 360,
+      phase2: { name: "ゴーレムロード・超硬", hp: 820, atk: 50, def: 30, inflict: "stun", inflictChance: .4 },
       weak: "lightning", resist: "fire", inflict: "stun", inflictChance: .35,
       drops: [{ mat: "crystal", min: 2, max: 4, chance: 1 }, { mat: "iron", min: 3, max: 5, chance: 1 }, { mat: "soul", min: 2, max: 3, chance: 1 }] },
   },
@@ -143,6 +146,7 @@ const AREAS = [
     ],
     boss: { name: "古龍ヴァルガ＝レクス", sprite: "👑🐲", hp: 1100, atk: 62, def: 30, exp: 1200, gold: 900,
       weak: "ice", resist: "fire", inflict: "burn", inflictChance: .45, atkElement: "fire",
+      phase2: { name: "古龍ヴァルガ＝レクス【真】", hp: 1600, atk: 82, def: 36, atkElement: "fire", inflict: "burn", inflictChance: .55 },
       drops: [{ mat: "mithril", min: 5, max: 8, chance: 1 }, { mat: "crystal", min: 3, max: 5, chance: 1 }, { mat: "soul", min: 3, max: 5, chance: 1 }] },
   },
 ];
@@ -202,7 +206,37 @@ const RECIPES = [
   { id: "acc_fireward", name: "炎耐性の護符", icon: "🟥", type: "accessory", stats: { resist: { fire: 0.4 } },      cost: { fang: 5, crystal: 1 } },
   { id: "acc_allward",  name: "万象の護符",   icon: "🔰", type: "accessory", stats: { resist: { fire: 0.25, ice: 0.25, lightning: 0.25 } }, cost: { crystal: 3, soul: 1 } },
   { id: "acc_hero",   name: "英雄の証",     icon: "🏅", type: "accessory", stats: { atk: 12, def: 12, crit: 0.08 }, cost: { soul: 3, crystal: 2 } },
+  { id: "acc_collector", name: "コレクターの勲章", icon: "🎖️", type: "accessory", stats: { atk: 15, def: 15, crit: 0.1, dropBonus: 0.2 }, cost: { soul: 30 }, rewardOnly: true },
 ];
+
+/* ---------- 図鑑コンプ報酬 ---------- */
+const DEX_TOTAL = 12; // 通常8＋ボス4
+const DEX_MILESTONES = [
+  { n: 4,  reward: { gold: 200, items: { elixir: 1 } } },
+  { n: 8,  reward: { gold: 600, mats: { soul: 2 } } },
+  { n: 12, reward: { gold: 2000, owned: "acc_collector" } },
+];
+function dexCount() { return Object.keys(state.dex).length; }
+function checkDexRewards() {
+  for (let i = 0; i < DEX_MILESTONES.length; i++) {
+    const m = DEX_MILESTONES[i];
+    if (dexCount() >= m.n && !state.dexClaimed[i]) log(`📚 図鑑 ${m.n}種達成！「記録」タブで報酬を受け取れる。`, "l-good");
+  }
+}
+function claimDexReward(i) {
+  const m = DEX_MILESTONES[i];
+  if (!m || dexCount() < m.n || state.dexClaimed[i]) return;
+  state.dexClaimed[i] = true;
+  const r = m.reward; let parts = [];
+  if (r.gold) { state.gold += r.gold; parts.push(`💰${r.gold}G`); }
+  for (const [mat, n] of Object.entries(r.mats || {})) { addMat(mat, n); parts.push(`${MATERIALS[mat].icon}×${n}`); }
+  for (const [it, n] of Object.entries(r.items || {})) { state.items[it] = itemQty(it) + n; parts.push(`${SHOP_BY_ID[it].icon}×${n}`); }
+  if (r.owned && !state.owned.includes(r.owned)) { state.owned.push(r.owned); parts.push(`${RECIPE_BY_ID[r.owned].icon}${RECIPE_BY_ID[r.owned].name}`); }
+  log(`🎁 図鑑報酬を受け取った: ${parts.join(" / ")}`, "l-gold");
+  toast("図鑑報酬ゲット！");
+  sfx("quest");
+  save(); renderAll();
+}
 
 /* ---------- セット装備の効果 ---------- */
 const SETS = [
@@ -311,7 +345,7 @@ function newGame() {
     materials: {}, owned: [], items: {}, enhance: {},
     perm: { atk: 0, def: 0, hp: 0 }, permBought: { atk: 0, def: 0, hp: 0 },
     equipped: { weapon: null, armor: null, accessory: null, axe: null, pickaxe: null },
-    bossCleared: {}, dex: {}, questProg: {}, questClaimed: {},
+    bossCleared: {}, dex: {}, dexClaimed: {}, questProg: {}, questClaimed: {},
     settings: { sound: true, bgm: false, craftableOnly: false },
     lastBattle: null,
     currentGatherArea: "grassland",
@@ -331,6 +365,7 @@ function migrateSave(s) {
   s.equipped = Object.assign({ weapon: null, armor: null, accessory: null, axe: null, pickaxe: null }, s.equipped);
   s.bossCleared = s.bossCleared || {};
   s.dex = s.dex || {};
+  s.dexClaimed = s.dexClaimed || {};
   s.questProg = s.questProg || {};
   s.questClaimed = s.questClaimed || {};
   s.settings = Object.assign({ sound: true, bgm: false, craftableOnly: false }, s.settings);
@@ -580,7 +615,7 @@ function startBattle(areaId, kind = "normal") {
   state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
   battle = {
     areaId, kind,
-    enemy: { ...m, maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss: kind === "boss" },
+    enemy: { ...m, baseName: m.name, art: enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss: kind === "boss" },
     defending: false, over: false, showSkills: false, showItems: false,
   };
   state.lastBattle = { areaId, kind };
@@ -691,10 +726,11 @@ function actSkill(skillId) {
   if (!battle || battle.over) return;
   const sk = SKILLS[skillId];
   if (!sk) return;
-  if (state.mp < sk.mp) { toast("MPが足りない"); return; }
+  if (state.mp < sk.mp) { toast("MPが足りない"); sfx("deny"); return; }
   fxQueue = [];
   state.mp -= sk.mp;
   log(`${sk.icon} ${sk.name} を放った！`, "l-sys");
+  sfx("cast");
   sk.run(combatCtx);
   battle.showSkills = false;
   finishPlayerAction();
@@ -706,6 +742,7 @@ function actDefend() {
   const s = derivedStats();
   state.mp = Math.min(s.maxMp, state.mp + 5);
   log(`🛡 身を守る体勢をとった（被ダメ減＆MP回復）。`, "l-sys");
+  sfx("guard");
   finishPlayerAction();
 }
 function actItem(itemId) {
@@ -768,7 +805,7 @@ function enemyPhase() {
   }
 
   const s = derivedStats();
-  state.mp = Math.min(s.maxMp, state.mp + 2);
+  state.mp = Math.min(s.maxMp, state.mp + 3);
   battle.defending = false;
   startPlayerTurn();
 }
@@ -788,9 +825,30 @@ function startPlayerTurn() {
   if (battle.auto && !battle.over) setTimeout(() => { if (battle && !battle.over && battle.auto) actAttack(); }, 650);
 }
 
+function transformBoss() {
+  const e = battle.enemy;
+  const p = e.phase2;
+  battle.phase2done = true;
+  e.name = p.name;
+  e.maxHp = p.hp; e.hp = p.hp;
+  e.atk = p.atk; e.def = p.def;
+  if (p.weak) e.weak = p.weak;
+  if (p.resist) e.resist = p.resist;
+  if (p.atkElement) e.atkElement = p.atkElement;
+  if (p.inflict) { e.inflict = p.inflict; e.inflictChance = p.inflictChance || 0.35; }
+  e.enraged = false; e.statuses = [];
+  log(`💥 ${e.name} ——まだ終わらない！第2形態だ！`, "l-bad");
+  toast("ボスが変身した！");
+  sfx("transform");
+  // 変身のターンは敵の攻撃なし。プレイヤーのターンへ
+  startPlayerTurn();
+}
+
 function winBattle() {
   const e = battle.enemy;
   const isBoss = battle.kind === "boss";
+  // ボス第2形態：HP0になっても変身して戦闘続行
+  if (isBoss && e.phase2 && !battle.phase2done) { transformBoss(); return; }
   battle.over = true;
   renderBattle(); flushFx();
   log(`✨ ${e.name} を倒した！`, "l-good");
@@ -807,18 +865,20 @@ function winBattle() {
   state.gold += gold;
   if (drops.length) log(`ドロップ: ${drops.join(" / ")}`, "l-good");
   log(`💰 ${gold}G を手に入れた。`, "l-gold");
-  // 図鑑＆クエスト
-  state.dex[e.name] = (state.dex[e.name] || 0) + 1;
-  questTrack("kill", e.name);
+  // 図鑑＆クエスト（変身後も基本名で記録）
+  const recName = e.baseName || e.name;
+  state.dex[recName] = (state.dex[recName] || 0) + 1;
+  questTrack("kill", recName);
   if (isBoss) {
-    questTrack("boss", e.name);
+    questTrack("boss", recName);
     const first = !state.bossCleared[battle.areaId];
     state.bossCleared[battle.areaId] = true;
     if (first) log(`👑 ボス初撃破！`, "l-good");
-    toast(`ボス『${e.name}』を撃破！`);
+    toast(`ボス『${recName}』を撃破！`);
   } else {
-    toast(`${e.name} 撃破！ +${e.exp}EXP`);
+    toast(`${recName} 撃破！ +${e.exp}EXP`);
   }
+  checkDexRewards();
   sfx("win");
   gainExp(e.exp);
   save();
@@ -829,7 +889,7 @@ function loseBattle() {
   battle.over = true;
   renderBattle(); flushFx();
   log(`💀 倒れてしまった…拠点に戻った。`, "l-bad");
-  const lost = Math.floor(state.gold * 0.2);
+  const lost = Math.floor(state.gold * 0.15);
   state.gold -= lost;
   if (lost > 0) log(`動揺して ${lost}G を落とした。`, "l-gold");
   const s = derivedStats();
@@ -842,8 +902,9 @@ function loseBattle() {
 
 function fleeBattle() {
   if (!battle) return;
-  if (battle.kind === "boss") { toast("ボス戦からは逃げられない！"); log("ボスからは逃げられない！", "l-bad"); return; }
+  if (battle.kind === "boss") { toast("ボス戦からは逃げられない！"); log("ボスからは逃げられない！", "l-bad"); sfx("deny"); return; }
   log(`🏃 ${battle.enemy.name} から逃げ出した。`, "l-sys");
+  sfx("flee");
   endBattleUI();
 }
 
@@ -914,6 +975,7 @@ function equipItem(recipeId) {
   state.equipped[slot] = recipeId;
   clampVitals();
   log(`${r.name} を装備した。`, "l-sys");
+  sfx("equip");
   save(); renderAll();
 }
 
@@ -957,9 +1019,11 @@ function renderStatus() {
   document.getElementById("stat-gold").textContent = fmt(state.gold);
 }
 
+let selectedArea = null;
 function renderAreas() {
   const wrap = document.getElementById("area-list");
   wrap.innerHTML = "";
+  // 直前と再戦
   if (state.lastBattle) {
     const lb = state.lastBattle;
     const area = AREAS.find(a => a.id === lb.areaId);
@@ -971,34 +1035,56 @@ function renderAreas() {
       wrap.appendChild(rep);
     }
   }
-  for (const a of AREAS) {
+  // 選択中エリアの決定（未選択や未開放なら、解放済みの最奥へ）
+  const unlocked = AREAS.filter(a => state.level >= a.reqLevel);
+  if (!selectedArea || state.level < (AREAS.find(a => a.id === selectedArea) || {}).reqLevel) {
+    selectedArea = unlocked.length ? unlocked[unlocked.length - 1].id : AREAS[0].id;
+  }
+  // ワールドマップ
+  const map = document.createElement("div");
+  map.className = "world-map";
+  AREAS.forEach((a, idx) => {
     const locked = state.level < a.reqLevel;
-    const card = document.createElement("div");
-    card.className = "area-card" + (locked ? " locked" : "");
-    const cleared = state.bossCleared[a.id];
-    card.innerHTML = `
-      <div class="area-info">
-        <h4>${a.icon} ${a.name} ${cleared ? "👑✔" : ""}</h4>
-        <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放` : a.desc}</div>
-      </div>`;
+    if (idx > 0) {
+      const conn = document.createElement("div");
+      conn.className = "map-conn" + (locked ? " locked" : "");
+      map.appendChild(conn);
+    }
+    const node = document.createElement("button");
+    node.className = "map-node" + (locked ? " locked" : "") + (a.id === selectedArea ? " sel" : "");
+    if (!locked && typeof BG !== "undefined" && BG[a.id]) node.style.backgroundImage = `url(${BG[a.id]})`;
+    node.innerHTML = `
+      <span class="map-name">${a.name}</span>
+      ${locked ? `<span class="map-lock">🔒Lv${a.reqLevel}</span>` : ""}
+      ${state.bossCleared[a.id] ? `<span class="map-crown">👑</span>` : ""}`;
+    if (!locked) node.onclick = () => { selectedArea = a.id; renderAreas(); };
+    map.appendChild(node);
+  });
+  wrap.appendChild(map);
+  // 選択エリアの詳細＆出撃ボタン
+  const a = AREAS.find(x => x.id === selectedArea);
+  const det = document.createElement("div");
+  det.className = "area-detail";
+  const locked = state.level < a.reqLevel;
+  det.innerHTML = `
+    <h4>${a.icon} ${a.name} ${state.bossCleared[a.id] ? "👑✔" : ""}</h4>
+    <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放` : a.desc}</div>`;
+  if (!locked) {
     const btns = document.createElement("div");
     btns.className = "area-btns";
     const b1 = document.createElement("button");
-    b1.className = "action";
-    b1.textContent = locked ? "未開放" : "戦いに行く";
-    b1.disabled = locked;
+    b1.className = "action"; b1.textContent = "⚔ 戦いに行く";
     b1.onclick = () => startBattle(a.id, "normal");
     btns.appendChild(b1);
-    if (!locked && a.boss) {
+    if (a.boss) {
       const b2 = document.createElement("button");
-      b2.className = "action boss-btn";
-      b2.textContent = "👑 ボス";
+      b2.className = "action boss-btn"; b2.textContent = "👑 ボス";
       b2.onclick = () => startBattle(a.id, "boss");
       btns.appendChild(b2);
     }
-    card.appendChild(btns);
-    wrap.appendChild(card);
+    det.appendChild(btns);
   }
+  wrap.appendChild(det);
 }
 
 function statusIcons(holder) {
@@ -1032,7 +1118,7 @@ function renderBattle() {
       </div>
       <div class="vs">VS</div>
       <div class="fighter enemy">
-        <div class="sprite">${spriteMarkup(enemyArtKey(e), e.isBoss)}</div>
+        <div class="sprite">${spriteMarkup(e.art || enemyArtKey(e), e.isBoss)}</div>
         <div class="fname">${e.isBoss ? "👑" : ""}${e.name} ${statusIcons(e)}</div>
         <div class="fbar"><div style="width:${e.hp / e.maxHp * 100}%"></div></div>
         <div class="sub">HP ${e.hp}/${e.maxHp}</div>
@@ -1139,7 +1225,7 @@ function renderCraft() {
   filter.querySelector("input").onchange = (e) => { state.settings.craftableOnly = e.target.checked; save(); renderCraft(); };
 
   const order = ["axe", "pickaxe", "weapon", "armor", "accessory"];
-  const sorted = [...RECIPES].sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+  const sorted = [...RECIPES].filter(r => !r.rewardOnly).sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
   let shown = 0;
   for (const r of sorted) {
     const ok = canCraft(r);
@@ -1390,6 +1476,36 @@ function renderRecord() {
         card.appendChild(b);
       }
       qWrap.appendChild(card);
+    }
+  }
+  // 図鑑の進捗＆コンプ報酬
+  const dProg = document.getElementById("dex-progress");
+  if (dProg) {
+    const cnt = dexCount();
+    dProg.innerHTML = `発見 ${cnt}/${DEX_TOTAL} 種
+      <div class="bar quest-bar"><div class="bar-fill exp" style="width:${Math.min(100, cnt / DEX_TOTAL * 100)}%"></div></div>`;
+  }
+  const dRew = document.getElementById("dex-reward");
+  if (dRew) {
+    dRew.innerHTML = "";
+    for (let i = 0; i < DEX_MILESTONES.length; i++) {
+      const m = DEX_MILESTONES[i];
+      const r = m.reward;
+      const claimed = state.dexClaimed[i];
+      const ok = dexCount() >= m.n;
+      const rewardStr = [r.gold ? `💰${r.gold}` : "",
+        ...Object.entries(r.mats || {}).map(([mat, n]) => `${MATERIALS[mat].icon}×${n}`),
+        ...Object.entries(r.items || {}).map(([it, n]) => `${SHOP_BY_ID[it].icon}×${n}`),
+        r.owned ? `${RECIPE_BY_ID[r.owned].icon}${RECIPE_BY_ID[r.owned].name}` : ""].filter(Boolean).join(" ");
+      const card = document.createElement("div");
+      card.className = "recipe-card" + (claimed ? " owned" : "");
+      card.innerHTML = `<div class="rinfo"><h4>図鑑 ${m.n}種 ${claimed ? "✔" : ""}</h4><div class="effect">報酬 ${rewardStr}</div></div>`;
+      const b = document.createElement("button");
+      b.className = "action"; b.textContent = claimed ? "受取済" : (ok ? "受取" : `${m.n}種で解放`);
+      b.disabled = claimed || !ok;
+      b.onclick = () => claimDexReward(i);
+      card.appendChild(b);
+      dRew.appendChild(card);
     }
   }
   // 図鑑
