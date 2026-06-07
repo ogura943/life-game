@@ -25,6 +25,7 @@ const MATERIALS = {
   soul:      { name: "ボスの魂",      icon: "🔆" },
   stardust:  { name: "星屑",          icon: "✨" },
   darkcry:   { name: "闇の結晶",      icon: "🟪" },
+  chaos:     { name: "混沌の欠片",    icon: "🌀" },
 };
 
 /* ---------- 属性 ---------- */
@@ -211,6 +212,9 @@ const RECIPES = [
   { id: "w_star_lance",  name: "天穹の槍",      icon: "🔱",  type: "weapon", wtype: "spear",  element: "ice",  stats: { atk: 88 }, cost: { stardust: 8, mithril: 4, soul: 4 } },
   { id: "w_abyss_blade", name: "魔王の魔剣",    icon: "⚔️", type: "weapon", wtype: "sword",  element: "fire", stats: { atk: 110 }, cost: { darkcry: 8, soul: 6, mithril: 5 } },
   { id: "w_abyss_scythe",name: "終焉の大鎌",    icon: "🪓",  type: "weapon", wtype: "axe",    element: "fire", stats: { atk: 130 }, cost: { darkcry: 10, soul: 8, stardust: 4 } },
+  // --- 武器：ハードモード素材(混沌)の最終グレード ---
+  { id: "w_chaos_sword", name: "混沌喰らい",    icon: "⚔️", type: "weapon", wtype: "sword",  element: "lightning", stats: { atk: 200 }, cost: { chaos: 12, darkcry: 8, soul: 8 }, hard: true },
+  { id: "w_chaos_staff", name: "虚無の杖",      icon: "🪄",  type: "weapon", wtype: "staff",  element: "ice",  stats: { atk: 170, mp: 60 }, cost: { chaos: 12, stardust: 8, soul: 6 }, hard: true },
 
   // --- 防具 ---
   { id: "a_leather", name: "革の鎧",       icon: "🦺", type: "armor", stats: { def: 4, hp: 10 },        cost: { pelt: 4 }, desc: "DEF +4 / 最大HP +10" },
@@ -223,6 +227,7 @@ const RECIPES = [
   { id: "a_soul", name: "守護神の鎧",      icon: "🛡️", type: "armor", stats: { def: 55, hp: 160, mp: 20 }, cost: { soul: 5, mithril: 3, crystal: 3 }, desc: "DEF +55 / HP +160 / MP +20" },
   { id: "a_star", name: "星天の聖衣",      icon: "🛡️", type: "armor", stats: { def: 70, hp: 220, mp: 40 }, cost: { stardust: 8, soul: 5, mithril: 4 }, desc: "DEF +70 / HP +220 / MP +40" },
   { id: "a_abyss", name: "魔王の漆黒鎧",   icon: "🛡️", type: "armor", stats: { def: 95, hp: 320, mp: 30 }, cost: { darkcry: 10, soul: 8, mithril: 6 }, desc: "DEF +95 / HP +320 / MP +30" },
+  { id: "a_chaos", name: "混沌の神鎧",     icon: "🛡️", type: "armor", stats: { def: 150, hp: 600, mp: 60 }, cost: { chaos: 14, darkcry: 10, soul: 10 }, desc: "DEF +150 / HP +600 / MP +60", hard: true },
 
   // --- アクセサリ（accessory枠） ---
   { id: "acc_power",  name: "力の指輪",     icon: "💍", type: "accessory", stats: { atk: 6 },              cost: { iron: 3, shard: 2 } },
@@ -236,6 +241,7 @@ const RECIPES = [
   { id: "acc_hero",   name: "英雄の証",     icon: "🏅", type: "accessory", stats: { atk: 12, def: 12, crit: 0.08 }, cost: { soul: 3, crystal: 2 } },
   { id: "acc_star",   name: "星辰のアミュレット", icon: "✨", type: "accessory", stats: { atk: 20, crit: 0.15, mp: 30 }, cost: { stardust: 6, soul: 3 } },
   { id: "acc_abyss",  name: "魔王の指輪",   icon: "💍", type: "accessory", stats: { atk: 25, def: 25, crit: 0.12, dropBonus: 0.2 }, cost: { darkcry: 6, soul: 5 } },
+  { id: "acc_chaos",  name: "混沌の核",     icon: "🌀", type: "accessory", stats: { atk: 40, def: 40, crit: 0.2, dropBonus: 0.3 }, cost: { chaos: 10, soul: 6 }, hard: true },
   { id: "acc_collector", name: "コレクターの勲章", icon: "🎖️", type: "accessory", stats: { atk: 15, def: 15, crit: 0.1, dropBonus: 0.2 }, cost: { soul: 30 }, rewardOnly: true },
 ];
 
@@ -276,6 +282,7 @@ const SETS = [
   { name: "英雄", pieces: ["w_soul_blade", "a_soul", "acc_hero"], bonus: { atk: 25, def: 25, hp: 80, crit: 0.1, resist: { fire: 0.3, ice: 0.3, lightning: 0.3 } } },
   { name: "星天", pieces: ["w_star_lance", "a_star", "acc_star"], bonus: { atk: 40, mp: 50, crit: 0.15, resist: { lightning: 0.5 } } },
   { name: "魔王", pieces: ["w_abyss_blade", "a_abyss", "acc_abyss"], bonus: { atk: 60, def: 40, hp: 200, crit: 0.15, resist: { fire: 0.5, ice: 0.3, lightning: 0.3 } } },
+  { name: "混沌", pieces: ["w_chaos_sword", "a_chaos", "acc_chaos"], bonus: { atk: 120, def: 80, hp: 500, crit: 0.2, resist: { fire: 0.5, ice: 0.5, lightning: 0.5 } } },
 ];
 function activeSets() {
   const eq = [state.equipped.weapon, state.equipped.armor, state.equipped.accessory].filter(Boolean);
@@ -382,7 +389,7 @@ function newGame() {
     equipped: { weapon: null, armor: null, accessory: null, axe: null, pickaxe: null },
     bossCleared: {}, dex: {}, dexClaimed: {}, questProg: {}, questClaimed: {},
     settings: { sound: true, bgm: false, craftableOnly: false },
-    lastBattle: null, gauntlet: null,
+    lastBattle: null, gauntlet: null, hard: false,
     currentGatherArea: "grassland",
   };
 }
@@ -405,6 +412,7 @@ function migrateSave(s) {
   s.questClaimed = s.questClaimed || {};
   s.settings = Object.assign({ sound: true, bgm: false, craftableOnly: false }, s.settings);
   s.gauntlet = null; // 連戦は途中保存しない（リロードで中断）
+  s.hard = !!s.hard;
   return s;
 }
 function readSlot(i) {
@@ -682,15 +690,27 @@ function stageEnemy(area, stage) {
     hp: Math.round(base.hp * hpF), atk: Math.round(base.atk * atkF),
   });
 }
+function hardUnlocked() { return !!state.bossCleared.castle; }
+function applyHard(m) {
+  m.hp = Math.round(m.hp * 3); m.atk = Math.round(m.atk * 1.8); m.def = Math.round(m.def * 1.5) + 3;
+  m.exp = Math.round(m.exp * 2.5); m.gold = Math.round(m.gold * 2.5);
+  if (m.phase2) {
+    const p = Object.assign({}, m.phase2);
+    p.hp = Math.round(p.hp * 3); p.atk = Math.round(p.atk * 1.8); p.def = Math.round(p.def * 1.5) + 3;
+    m.phase2 = p;
+  }
+  return m;
+}
 function startGauntlet(areaId) {
   const area = AREAS.find(a => a.id === areaId);
   if (!area) return;
   if (state.level < area.reqLevel) { toast("まだ挑戦できない"); return; }
+  if (state.hard && !hardUnlocked()) state.hard = false;
   state.lastBattle = { areaId, kind: "gauntlet" };
   const s = derivedStats();
   state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
-  state.gauntlet = { areaId, stage: 1 };
-  log(`🏁 ${area.name} 全${GAUNTLET_STAGES}ステージに挑戦！（5=中ボス / 10=大ボス）`, "l-sys");
+  state.gauntlet = { areaId, stage: 1, hard: !!state.hard };
+  log(`🏁 ${area.name} 全${GAUNTLET_STAGES}ステージ${state.hard ? "【🔥HARD】" : ""}に挑戦！（5=中ボス / 10=大ボス）`, "l-sys");
   spawnStage();
 }
 function spawnStage() {
@@ -698,9 +718,10 @@ function spawnStage() {
   const area = AREAS.find(a => a.id === g.areaId);
   const stage = g.stage;
   const m = stageEnemy(area, stage);
+  if (g.hard) applyHard(m);
   const isBoss = m._kind === "boss";
   battle = {
-    areaId: area.id, kind: isBoss ? "boss" : "normal", gauntlet: true, stage, midboss: m._kind === "mid",
+    areaId: area.id, kind: isBoss ? "boss" : "normal", gauntlet: true, stage, midboss: m._kind === "mid", hard: !!g.hard,
     enemy: { ...m, baseName: m.baseName || m.name, art: m.art || enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss },
     defending: false, over: false, showSkills: false, showItems: false,
   };
@@ -948,6 +969,15 @@ function winBattle() {
       drops.push(`${MATERIALS[d.mat].icon}${MATERIALS[d.mat].name} ×${amt}`);
     }
   }
+  // ハードモード：混沌の欠片がドロップ
+  if (battle.hard) {
+    const ai = AREAS.findIndex(a => a.id === battle.areaId);
+    const bossish = isBoss || battle.midboss;
+    let camt = 0;
+    if (bossish) camt = rand(2, 4) + Math.floor(ai / 2);
+    else if (Math.random() < 0.5) camt = 1 + Math.floor(ai / 3);
+    if (camt > 0) { addMat("chaos", camt); questTrack("gather", "chaos", camt); drops.push(`${MATERIALS.chaos.icon}${MATERIALS.chaos.name} ×${camt}`); }
+  }
   const gold = Math.round(e.gold * (1 + (ps.dropBonus || 0)));
   state.gold += gold;
   if (drops.length) log(`ドロップ: ${drops.join(" / ")}`, "l-good");
@@ -973,9 +1003,11 @@ function winBattle() {
     const g = state.gauntlet;
     if (g.stage >= GAUNTLET_STAGES) {
       const area = AREAS.find(a => a.id === g.areaId);
-      const bonus = 120 + area.reqLevel * 25;
+      const bonus = (120 + area.reqLevel * 25) * (g.hard ? 3 : 1);
       state.gold += bonus;
-      log(`🏆 全${GAUNTLET_STAGES}ステージ制覇！ クリアボーナス 💰${bonus}G！`, "l-good");
+      let extra = "";
+      if (g.hard) { const c = rand(3, 6); addMat("chaos", c); questTrack("gather", "chaos", c); extra = ` ＋${MATERIALS.chaos.icon}×${c}`; }
+      log(`🏆 全${GAUNTLET_STAGES}ステージ制覇${g.hard ? "【🔥HARD】" : ""}！ クリアボーナス 💰${bonus}G${extra}！`, "l-good");
       toast("🏆 ステージ制覇！");
       sfx("level");
       state.gauntlet = null;
@@ -1154,6 +1186,14 @@ function renderAreas() {
       wrap.appendChild(rep);
     }
   }
+  // ハードモード切替（魔王撃破で解放）
+  if (hardUnlocked()) {
+    const ht = document.createElement("button");
+    ht.className = "action hard-toggle" + (state.hard ? " on" : " secondary");
+    ht.textContent = state.hard ? "🔥 ハードモード：ON（敵強化・混沌の欠片）" : "🔥 ハードモード：OFF";
+    ht.onclick = () => { state.hard = !state.hard; save(); renderAreas(); };
+    wrap.appendChild(ht);
+  }
   // 選択中エリアの決定（未選択や未開放なら、解放済みの最奥へ）
   const unlocked = AREAS.filter(a => state.level >= a.reqLevel);
   if (!selectedArea || state.level < (AREAS.find(a => a.id === selectedArea) || {}).reqLevel) {
@@ -1221,7 +1261,7 @@ function renderBattle() {
   const pStatus = statusIcons(state);
 
   const stageBanner = battle.gauntlet
-    ? `<div class="stage-banner">🏁 ステージ ${battle.stage}/${GAUNTLET_STAGES}${battle.midboss ? " ⭐中ボス" : ""}${battle.kind === "boss" ? " 👑大ボス" : ""}</div>`
+    ? `<div class="stage-banner${battle.hard ? " hard" : ""}">🏁 ステージ ${battle.stage}/${GAUNTLET_STAGES}${battle.hard ? " 🔥HARD" : ""}${battle.midboss ? " ⭐中ボス" : ""}${battle.kind === "boss" ? " 👑大ボス" : ""}</div>`
     : "";
   wrap.innerHTML = `
     ${stageBanner}
@@ -1345,7 +1385,7 @@ function renderCraft() {
   filter.querySelector("input").onchange = (e) => { state.settings.craftableOnly = e.target.checked; save(); renderCraft(); };
 
   const order = ["axe", "pickaxe", "weapon", "armor", "accessory"];
-  const sorted = [...RECIPES].filter(r => !r.rewardOnly).sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+  const sorted = [...RECIPES].filter(r => !r.rewardOnly && (!r.hard || hardUnlocked())).sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
   let shown = 0;
   for (const r of sorted) {
     const ok = canCraft(r);
