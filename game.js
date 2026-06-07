@@ -939,11 +939,7 @@ function winBattle() {
       setTimeout(endBattleUI, 1000);
     } else {
       g.stage++;
-      const s = derivedStats();
-      const hh = Math.round(s.maxHp * 0.2), mh = Math.round(s.maxMp * 0.3);
-      state.hp = Math.min(s.maxHp, state.hp + hh);
-      state.mp = Math.min(s.maxMp, state.mp + mh);
-      log(`▶ ステージ ${g.stage}/${GAUNTLET_STAGES} へ！（HP+${hh} MP+${mh} 回復）`, "l-sys");
+      log(`▶ ステージ ${g.stage}/${GAUNTLET_STAGES} へ！（HP/MPはそのまま持ち越し）`, "l-sys");
       save();
       setTimeout(() => { if (state.gauntlet) spawnStage(); }, 850);
     }
