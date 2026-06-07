@@ -239,10 +239,10 @@ function fieldUpdate(dt) {
     if (m.dead) continue;
     if (m.hitFlash > 0) m.hitFlash -= dt;
     if (m.stun > 0) { m.stun -= dt; continue; }
-    const dx = p.x - m.x, dy = p.y - m.y, d = Math.hypot(dx, dy) || 1;
-    const range = m.r + p.r + 4;
-    if (d > range) { const v = Math.min(m.speed * dt, d); m.x += dx / d * v; m.y += dy / d * v; }
-    else if (m.atkCd <= 0) { doMobAttack(m); m.atkCd = m.atkCdMax; }
+    // 敵は追いかけてこない。隣接したとき（自分から接近したとき）だけ反撃する
+    const d = _dist(m, field.player);
+    const range = m.r + p.r + 7;
+    if (d <= range && m.atkCd <= 0) { doMobAttack(m); m.atkCd = m.atkCdMax; }
     if (m.atkCd > 0) m.atkCd -= dt;
   }
 
