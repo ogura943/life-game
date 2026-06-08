@@ -453,6 +453,10 @@ const META_KEY = SAVE_PREFIX + ".meta";
 const NUM_SLOTS = 3;
 let currentSlot = 0;
 const BASE_STATS = { atk: 5, def: 2, maxHp: 30, maxMp: 10 };
+// 防御は割合軽減： 与ダメージ = ATK × DEF_K / (DEF_K + DEF)
+//   DEF = DEF_K で被ダメ50%、DEF が増えるほど滑らかに軽減（1ダメに張り付かない）
+const DEF_K = 80;
+function mitigate(atk, def) { return atk * (DEF_K / (DEF_K + Math.max(0, def))); }
 
 function newGame() {
   return {
@@ -925,7 +929,8 @@ function dealHit(opts) {
   if (opts.ignoreDef || wt.ignoreDef) def = 0;
   else def = Math.max(0, def * (1 - (opts.pierce || 0) - (wt.pierce || 0)));
 
-  let dmg = ps.atk * mult - def + (ps.bonusDmg || 0) * mult; // 追撃特性
+  // 割合軽減：攻撃力を敵DEFで軽減（引き算ではない）
+  let dmg = mitigate(ps.atk * mult + (ps.bonusDmg || 0) * mult, def);
 
   // 属性：弱点1.5倍 / 耐性0.5倍
   const elem = weaponElement();
@@ -1041,7 +1046,7 @@ function enemyPhase() {
     log(`${e.name} は痺れて動けない！`, "l-good");
   } else {
     const ps = derivedStats();
-    let edmg = Math.max(1, e.atk - ps.def + rand(-2, 2));
+    let edmg = Math.max(1, Math.round(mitigate(e.atk, ps.def) + rand(-2, 2)));
     if (battle.defending) edmg = Math.max(1, Math.round(edmg * 0.4));
     // 属性攻撃はプレイヤーの耐性で軽減
     let elemNote = "";
