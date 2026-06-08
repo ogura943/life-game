@@ -540,3 +540,16 @@ button.secondary:disabled { background: #efe9dc; color: #b6ab95; }
 button .ico, span.ico {
   pointer-events: none;
 }
+
+/* 素材スロット（.gicon / .micon）内のSVGアイコン */
+.gicon .ico, .micon .ico {
+  width: 1em;
+  height: 1em;
+}
+
+/* ログ行・トースト内のインラインアイコン */
+#log .ico, .toast .ico {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: middle;
+}
