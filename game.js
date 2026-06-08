@@ -267,7 +267,7 @@ function claimDexReward(i) {
   if (r.gold) { state.gold += r.gold; parts.push(`💰${r.gold}G`); }
   for (const [mat, n] of Object.entries(r.mats || {})) { addMat(mat, n); parts.push(`${MATERIALS[mat].icon}×${n}`); }
   for (const [it, n] of Object.entries(r.items || {})) { state.items[it] = itemQty(it) + n; parts.push(`${SHOP_BY_ID[it].icon}×${n}`); }
-  if (r.owned && !state.owned.includes(r.owned)) { state.owned.push(r.owned); parts.push(`${RECIPE_BY_ID[r.owned].icon}${RECIPE_BY_ID[r.owned].name}`); }
+  if (r.owned) { grantGear(r.owned, "legend"); parts.push(`${RECIPE_BY_ID[r.owned].icon}${RECIPE_BY_ID[r.owned].name}【レジェンド】`); }
   log(`🎁 図鑑報酬を受け取った: ${parts.join(" / ")}`, "l-gold");
   toast("図鑑報酬ゲット！");
   sfx("quest");
@@ -285,7 +285,7 @@ const SETS = [
   { name: "混沌", pieces: ["w_chaos_sword", "a_chaos", "acc_chaos"], bonus: { atk: 120, def: 80, hp: 500, crit: 0.2, resist: { fire: 0.5, ice: 0.5, lightning: 0.5 } } },
 ];
 function activeSets() {
-  const eq = [state.equipped.weapon, state.equipped.armor, state.equipped.accessory].filter(Boolean);
+  const eq = [equippedRid("weapon"), equippedRid("armor"), equippedRid("accessory")].filter(Boolean);
   return SETS.filter(s => s.pieces.every(p => eq.includes(p)));
 }
 
@@ -298,6 +298,8 @@ function statBadges(s) {
   if (s.crit) p.push(`会心率 +${Math.round(s.crit * 100)}%`);
   if (s.guard) p.push(`状態異常耐性 ${Math.round(s.guard * 100)}%`);
   if (s.dropBonus) p.push(`ドロップ/G +${Math.round(s.dropBonus * 100)}%`);
+  if (s.lifesteal) p.push(`吸収 +${Math.round(s.lifesteal * 100)}%`);
+  if (s.flatdmg) p.push(`追撃 +${s.flatdmg}`);
   if (s.resist) for (const [el, v] of Object.entries(s.resist)) p.push(`${ELEMENTS[el].icon}耐性 +${Math.round(v * 100)}%`);
   return p.join(" / ");
 }
@@ -313,9 +315,9 @@ function gearEffectText(r) {
 }
 
 // 強化コスト
-function enhanceCost(id) {
-  const r = RECIPE_BY_ID[id];
-  const lv = enhanceLv(id);
+function enhanceCost(uid) {
+  const g = gearById(uid); const r = RECIPE_BY_ID[g.rid];
+  const lv = g.enh || 0;
   const tier = Math.max(1, Math.round(gearScore(r) / 18));
   return { gold: 40 * (lv + 1) + tier * 12 * (lv + 1), mat: "shard", matN: lv + 1 };
 }
@@ -374,6 +376,77 @@ function claimQuest(id) {
 
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map(r => [r.id, r]));
 
+/* =========================================================
+   レア装備（インスタンス化＋ランダム特性）
+   - 作成のたびに ★レアリティ と ランダム特性 を抽選
+   - 同じ装備でも“当たり”を狙える（ハクスラ要素）
+   ========================================================= */
+const RARITIES = [
+  { key: "common", name: "コモン",   color: "#cfd4e0", affixes: 0, mult: 1.0,  weight: 52 },
+  { key: "rare",   name: "レア",     color: "#5aa9ff", affixes: 1, mult: 1.0,  weight: 31 },
+  { key: "epic",   name: "エピック", color: "#c678dd", affixes: 2, mult: 1.3,  weight: 13 },
+  { key: "legend", name: "レジェンド", color: "#f2c14e", affixes: 3, mult: 1.7,  weight: 4 },
+];
+const RARITY_BY_KEY = Object.fromEntries(RARITIES.map(r => [r.key, r]));
+const AFFIXES = [
+  { key: "atk", name: "攻撃", kind: "stat" },
+  { key: "def", name: "防御", kind: "stat" },
+  { key: "hp", name: "最大HP", kind: "stat" },
+  { key: "mp", name: "最大MP", kind: "stat" },
+  { key: "crit", name: "会心率", kind: "pct" },
+  { key: "guard", name: "状態異常耐性", kind: "pct" },
+  { key: "dropBonus", name: "ドロップ＆G", kind: "pct" },
+  { key: "lifesteal", name: "吸収", kind: "pct" },
+  { key: "flatdmg", name: "追撃", kind: "dmg" },
+];
+const AFFIX_BY_KEY = Object.fromEntries(AFFIXES.map(a => [a.key, a]));
+function gearPower(r) { const s = r.stats || {}; return Math.max(8, (s.atk || 0) + (s.def || 0) + Math.round((s.hp || 0) * 0.2) + Math.round((s.mp || 0) * 0.3)); }
+function rollRarity() {
+  const tot = RARITIES.reduce((s, r) => s + r.weight, 0);
+  let x = Math.random() * tot;
+  for (const r of RARITIES) { if ((x -= r.weight) < 0) return r.key; }
+  return "common";
+}
+function rollAffix(r, mult) {
+  const a = AFFIXES[rand(0, AFFIXES.length - 1)];
+  const P = gearPower(r);
+  let val;
+  if (a.key === "atk") val = Math.max(1, Math.round(P * (0.10 + Math.random() * 0.15) * mult));
+  else if (a.key === "def") val = Math.max(1, Math.round(P * (0.08 + Math.random() * 0.12) * mult));
+  else if (a.key === "hp") val = Math.max(5, Math.round(P * (0.6 + Math.random() * 1.4) * mult));
+  else if (a.key === "mp") val = Math.max(3, Math.round(P * (0.2 + Math.random() * 0.6) * mult));
+  else if (a.key === "crit") val = Math.round((0.04 + Math.random() * 0.08) * mult * 100) / 100;
+  else if (a.key === "guard") val = Math.round((0.15 + Math.random() * 0.3) * mult * 100) / 100;
+  else if (a.key === "dropBonus") val = Math.round((0.08 + Math.random() * 0.18) * mult * 100) / 100;
+  else if (a.key === "lifesteal") val = Math.round((0.04 + Math.random() * 0.10) * mult * 100) / 100;
+  else val = Math.max(2, Math.round(P * (0.2 + Math.random() * 0.3) * mult)); // flatdmg
+  return { key: a.key, val };
+}
+function makeGear(rid, rarityKey) {
+  const r = RECIPE_BY_ID[rid]; if (!r) return null;
+  const rk = rarityKey || rollRarity();
+  const rar = RARITY_BY_KEY[rk];
+  const affixes = [], used = new Set();
+  for (let i = 0; i < rar.affixes; i++) {
+    let af, guard = 0;
+    do { af = rollAffix(r, rar.mult); guard++; } while (used.has(af.key) && guard < 12);
+    used.add(af.key); affixes.push(af);
+  }
+  return { uid: state.gearSeq++, rid, rarity: rk, affixes, enh: 0 };
+}
+function grantGear(rid, rarityKey) { const g = makeGear(rid, rarityKey); if (g) state.gears.push(g); return g; }
+function gearById(uid) { return state.gears.find(g => g.uid === uid) || null; }
+function equippedGear(slot) { return gearById(state.equipped[slot]); }
+function equippedRid(slot) { const g = equippedGear(slot); return g ? g.rid : null; }
+function affixLabel(a) {
+  const d = AFFIX_BY_KEY[a.key] || { name: a.key, kind: "stat" };
+  return d.kind === "pct" ? `${d.name}+${Math.round(a.val * 100)}%` : `${d.name}+${a.val}`;
+}
+function gearDisplayName(g) {
+  const r = RECIPE_BY_ID[g.rid];
+  return `${r.icon} ${r.name}${(g.enh || 0) > 0 ? " +" + g.enh : ""}`;
+}
+
 /* ---------- セーブ＆ステート（複数スロット対応） ---------- */
 const SAVE_PREFIX = "fantasy-life-save-v2";
 const META_KEY = SAVE_PREFIX + ".meta";
@@ -384,9 +457,9 @@ const BASE_STATS = { atk: 5, def: 2, maxHp: 30, maxMp: 10 };
 function newGame() {
   return {
     level: 1, exp: 0, hp: BASE_STATS.maxHp, mp: BASE_STATS.maxMp, gold: 0,
-    materials: {}, owned: [], items: {}, enhance: {},
+    materials: {}, gears: [], gearSeq: 1, items: {},
     perm: { atk: 0, def: 0, hp: 0 }, permBought: { atk: 0, def: 0, hp: 0 },
-    equipped: { weapon: null, armor: null, accessory: null, axe: null, pickaxe: null },
+    equipped: { weapon: null, armor: null, accessory: null },
     bossCleared: {}, dex: {}, dexClaimed: {}, questProg: {}, questClaimed: {},
     settings: { sound: true, bgm: false, craftableOnly: false },
     lastBattle: null, gauntlet: null, hard: false,
@@ -401,10 +474,26 @@ function slotKey(i) { return SAVE_PREFIX + ".s" + i; }
 // 欠けている入れ子を補完
 function migrateSave(s) {
   s.items = s.items || {};
-  s.enhance = s.enhance || {};
   s.perm = Object.assign({ atk: 0, def: 0, hp: 0 }, s.perm);
   s.permBought = Object.assign({ atk: 0, def: 0, hp: 0 }, s.permBought);
-  s.equipped = Object.assign({ weapon: null, armor: null, accessory: null, axe: null, pickaxe: null }, s.equipped);
+  s.equipped = Object.assign({ weapon: null, armor: null, accessory: null }, s.equipped);
+  // 旧形式(owned:[rid], enhance:{rid:lv}) → 装備インスタンスへ変換
+  if (Array.isArray(s.owned) && (!s.gears || s.gears.length === 0)) {
+    s.gears = []; s.gearSeq = 1;
+    const ridToUid = {};
+    for (const rid of (s.owned || [])) {
+      if (!RECIPE_BY_ID[rid] || RECIPE_BY_ID[rid].type === "axe" || RECIPE_BY_ID[rid].type === "pickaxe") continue;
+      const uid = s.gearSeq++;
+      s.gears.push({ uid, rid, rarity: "common", affixes: [], enh: (s.enhance && s.enhance[rid]) || 0 });
+      ridToUid[rid] = uid;
+    }
+    for (const slot of ["weapon", "armor", "accessory"]) {
+      const rid = s.equipped[slot];
+      s.equipped[slot] = (rid && ridToUid[rid] != null) ? ridToUid[rid] : null;
+    }
+  }
+  s.gears = s.gears || []; s.gearSeq = s.gearSeq || (s.gears.reduce((m, g) => Math.max(m, g.uid), 0) + 1);
+  delete s.owned; delete s.enhance;
   s.bossCleared = s.bossCleared || {};
   s.dex = s.dex || {};
   s.dexClaimed = s.dexClaimed || {};
@@ -491,15 +580,25 @@ function expToNext(level) { return Math.floor(10 * Math.pow(level, 1.5)); }
 
 // 強化(+N)を反映した装備のステータス
 const ENHANCE_MAX = 10;
-function enhanceLv(id) { return state.enhance[id] || 0; }
-function gearStats(id) {
-  const r = RECIPE_BY_ID[id]; if (!r) return {};
+function enhanceLv(uid) { const g = gearById(uid); return g ? (g.enh || 0) : 0; }
+// 装備インスタンス g から最終ステータス（強化＋特性込み）
+function gearStats(g) {
+  if (!g) return {};
+  const r = RECIPE_BY_ID[g.rid]; if (!r) return {};
   const base = r.stats || {};
-  const f = 1 + 0.18 * enhanceLv(id);
+  const f = 1 + 0.18 * (g.enh || 0);
   const out = {};
   for (const k of ["atk", "def", "hp", "mp"]) if (base[k]) out[k] = Math.round(base[k] * f);
   for (const k of ["crit", "guard", "dropBonus"]) if (base[k]) out[k] = base[k];
   if (base.resist) out.resist = base.resist;
+  let lifesteal = 0, flatdmg = 0;
+  for (const a of g.affixes || []) {
+    if (["atk", "def", "hp", "mp", "crit", "guard", "dropBonus"].includes(a.key)) out[a.key] = (out[a.key] || 0) + a.val;
+    else if (a.key === "lifesteal") lifesteal += a.val;
+    else if (a.key === "flatdmg") flatdmg += a.val;
+  }
+  if (lifesteal) out.lifesteal = lifesteal;
+  if (flatdmg) out.flatdmg = flatdmg;
   return out;
 }
 
@@ -508,16 +607,14 @@ function derivedStats() {
   let def = BASE_STATS.def + (state.level - 1) * 1 + (state.perm.def || 0);
   let maxHp = BASE_STATS.maxHp + (state.level - 1) * 8 + (state.perm.hp || 0);
   let maxMp = BASE_STATS.maxMp + (state.level - 1) * 2;
-  let crit = 0, guard = 0, dropBonus = 0;
+  let crit = 0, guard = 0, dropBonus = 0, lifesteal = 0, bonusDmg = 0;
   const resist = { fire: 0, ice: 0, lightning: 0 };
   for (const slot of ["weapon", "armor", "accessory"]) {
-    const id = state.equipped[slot];
-    if (id && RECIPE_BY_ID[id]) {
-      const s = gearStats(id);
-      atk += s.atk || 0; def += s.def || 0; maxHp += s.hp || 0; maxMp += s.mp || 0;
-      crit += s.crit || 0; guard += s.guard || 0; dropBonus += s.dropBonus || 0;
-      if (s.resist) for (const k in s.resist) resist[k] += s.resist[k];
-    }
+    const s = gearStats(equippedGear(slot));
+    atk += s.atk || 0; def += s.def || 0; maxHp += s.hp || 0; maxMp += s.mp || 0;
+    crit += s.crit || 0; guard += s.guard || 0; dropBonus += s.dropBonus || 0;
+    lifesteal += s.lifesteal || 0; bonusDmg += s.flatdmg || 0;
+    if (s.resist) for (const k in s.resist) resist[k] += s.resist[k];
   }
   // セット効果
   for (const set of activeSets()) {
@@ -526,10 +623,10 @@ function derivedStats() {
     if (b.resist) for (const k in b.resist) resist[k] += b.resist[k];
   }
   for (const k in resist) resist[k] = Math.min(0.8, resist[k]);
-  return { atk, def, maxHp, maxMp, crit, guard, dropBonus, resist };
+  return { atk, def, maxHp, maxMp, crit, guard, dropBonus, resist, lifesteal, bonusDmg };
 }
 
-function equippedWeapon() { const id = state.equipped.weapon; return id ? RECIPE_BY_ID[id] : null; }
+function equippedWeapon() { const rid = equippedRid("weapon"); return rid ? RECIPE_BY_ID[rid] : null; }
 function weaponType() { const w = equippedWeapon(); return (w && WTYPES[w.wtype]) ? WTYPES[w.wtype] : WTYPES.fist; }
 function weaponElement() { const w = equippedWeapon(); return w ? (w.element || null) : null; }
 function toolTier(kind) { const id = state.equipped[kind]; return (id && RECIPE_BY_ID[id]) ? RECIPE_BY_ID[id].tier : 0; }
@@ -782,7 +879,7 @@ function dealHit(opts) {
   if (opts.ignoreDef || wt.ignoreDef) def = 0;
   else def = Math.max(0, def * (1 - (opts.pierce || 0) - (wt.pierce || 0)));
 
-  let dmg = ps.atk * mult - def;
+  let dmg = ps.atk * mult - def + (ps.bonusDmg || 0) * mult; // 追撃特性
 
   // 属性：弱点1.5倍 / 耐性0.5倍
   const elem = weaponElement();
@@ -791,7 +888,7 @@ function dealHit(opts) {
   else if (elem && e.resist === elem) { dmg *= 0.5; mark += ` ${elemLabel(elem)}耐性…`; }
 
   // 会心
-  const critChance = (wt.crit || 0) + (opts.critBonus || 0);
+  const critChance = (wt.crit || 0) + (opts.critBonus || 0) + (ps.crit || 0);
   const crit = Math.random() < critChance;
   if (crit) { dmg *= 1.8; mark = " ✨会心!" + mark; }
 
@@ -800,6 +897,14 @@ function dealHit(opts) {
   log(`${e.name} に ${dmg} ダメージ！${mark}`, (crit || mark.includes("弱点")) ? "l-good" : "");
   pushFx({ who: "enemy", dmg, crit, weak: mark.includes("弱点") });
   sfx(crit ? "crit" : "hit");
+
+  // 吸収（ライフスティール）
+  if (ps.lifesteal > 0) {
+    const heal = Math.max(1, Math.round(dmg * ps.lifesteal));
+    const before = state.hp;
+    state.hp = Math.min(ps.maxHp, state.hp + heal);
+    if (state.hp > before) pushFx({ who: "player", heal: state.hp - before });
+  }
 
   // 状態異常付与
   if (opts.inflict) inflict(e, e.name, opts.inflict, ps.atk);
@@ -1066,35 +1171,50 @@ function endBattleUI() {
   renderAll();
 }
 
-/* ---------- 作成 ---------- */
+/* ---------- 作成（毎回レアリティ＆特性を抽選） ---------- */
 function canCraft(recipe) { return Object.entries(recipe.cost).every(([m, q]) => matQty(m) >= q); }
 function craft(recipeId) {
   const r = RECIPE_BY_ID[recipeId];
   if (!canCraft(r)) { toast("素材が足りない"); return; }
   for (const [m, q] of Object.entries(r.cost)) addMat(m, -q);
-  if (!state.owned.includes(recipeId)) state.owned.push(recipeId);
-  log(`🔨 ${r.name} を作成した！`, "l-good");
-  toast(`${r.name} を作った！`);
-  sfx("craft");
-  autoEquipIfBetter(r);
+  const g = makeGear(recipeId);
+  state.gears.push(g);
+  const rar = RARITY_BY_KEY[g.rarity];
+  const affTxt = g.affixes.length ? " ／ " + g.affixes.map(affixLabel).join(" ") : "";
+  log(`🔨 ${r.name}【${rar.name}】を作成！${affTxt}`, g.rarity === "common" ? "l-good" : "l-gold");
+  toast(`${r.name}（${rar.name}）`);
+  sfx(g.rarity === "legend" || g.rarity === "epic" ? "level" : "craft");
+  autoEquipIfBetter(g);
   gainExp(5);
   save(); renderAll();
 }
 
-/* ---------- 装備の強化(+N) ---------- */
-function enhance(id) {
-  const r = RECIPE_BY_ID[id];
+/* ---------- 装備の強化(+N) / 分解 ---------- */
+function enhance(uid) {
+  const g = gearById(uid); if (!g) return;
+  const r = RECIPE_BY_ID[g.rid];
   if (!r || !["weapon", "armor", "accessory"].includes(r.type)) return;
-  const lv = enhanceLv(id);
-  if (lv >= ENHANCE_MAX) { toast("これ以上強化できない"); return; }
-  const c = enhanceCost(id);
-  if (state.gold < c.gold || matQty(c.mat) < c.matN) { toast("強化の素材かゴールドが足りない"); return; }
+  if ((g.enh || 0) >= ENHANCE_MAX) { toast("これ以上強化できない"); return; }
+  const c = enhanceCost(uid);
+  if (state.gold < c.gold || matQty(c.mat) < c.matN) { toast("強化の素材かゴールドが足りない"); sfx("deny"); return; }
   state.gold -= c.gold; addMat(c.mat, -c.matN);
-  state.enhance[id] = lv + 1;
+  g.enh = (g.enh || 0) + 1;
   clampVitals();
-  log(`⚒ ${r.name} を +${lv + 1} に強化した！`, "l-good");
-  toast(`${r.name} +${lv + 1}！`);
+  log(`⚒ ${r.name} を +${g.enh} に強化した！`, "l-good");
+  toast(`${r.name} +${g.enh}！`);
   sfx("enhance");
+  save(); renderAll();
+}
+function dismantle(uid) {
+  const g = gearById(uid); if (!g) return;
+  const r = RECIPE_BY_ID[g.rid];
+  const refund = Math.max(5, Math.round(gearScore(r) * 0.6) + (g.enh || 0) * 20);
+  for (const slot of ["weapon", "armor", "accessory"]) if (state.equipped[slot] === uid) state.equipped[slot] = null;
+  state.gears = state.gears.filter(x => x.uid !== uid);
+  state.gold += refund;
+  clampVitals();
+  log(`🔧 ${r.name} を分解して ${refund}G を得た。`, "l-gold");
+  sfx("buy");
   save(); renderAll();
 }
 
@@ -1114,18 +1234,27 @@ function gearScore(r) {
   const s = r.stats || {};
   return (r.tier || 0) * 100 + (s.atk || 0) + (s.def || 0) + (s.hp || 0) * 0.3 + (s.mp || 0) * 0.3;
 }
-function autoEquipIfBetter(r) {
-  const slot = r.type === "weapon" ? "weapon" : r.type === "armor" ? "armor" : r.type;
-  const cur = state.equipped[slot];
-  if (!cur) { state.equipped[slot] = r.id; clampVitals(); return; }
-  if (gearScore(r) > gearScore(RECIPE_BY_ID[cur])) { state.equipped[slot] = r.id; clampVitals(); }
+// 装備インスタンスの強さスコア（特性込み）
+function gearScoreInst(g) {
+  if (!g) return -1;
+  const r = RECIPE_BY_ID[g.rid]; const st = gearStats(g);
+  return (r.tier || 0) * 80
+    + (st.atk || 0) * 1.5 + (st.def || 0) * 1.2 + (st.hp || 0) * 0.3 + (st.mp || 0) * 0.2
+    + (st.crit || 0) * 140 + (st.flatdmg || 0) + (st.lifesteal || 0) * 140
+    + (st.dropBonus || 0) * 60 + (st.guard || 0) * 40 + (g.enh || 0) * 4;
 }
-function equipItem(recipeId) {
-  const r = RECIPE_BY_ID[recipeId];
-  const slot = r.type === "weapon" ? "weapon" : r.type === "armor" ? "armor" : r.type;
-  state.equipped[slot] = recipeId;
+function gearSlot(rid) { const t = RECIPE_BY_ID[rid].type; return t === "weapon" ? "weapon" : t === "armor" ? "armor" : "accessory"; }
+function autoEquipIfBetter(g) {
+  const slot = gearSlot(g.rid);
+  const cur = equippedGear(slot);
+  if (!cur || gearScoreInst(g) > gearScoreInst(cur)) { state.equipped[slot] = g.uid; clampVitals(); }
+}
+function equipItem(uid) {
+  const g = gearById(uid); if (!g) return;
+  const slot = gearSlot(g.rid);
+  state.equipped[slot] = uid;
   clampVitals();
-  log(`${r.name} を装備した。`, "l-sys");
+  log(`${RECIPE_BY_ID[g.rid].name} を装備した。`, "l-sys");
   sfx("equip");
   save(); renderAll();
 }
@@ -1391,19 +1520,19 @@ function renderCraft() {
     const ok = canCraft(r);
     if (state.settings.craftableOnly && !ok) continue;
     shown++;
-    const owned = state.owned.includes(r.id);
+    const haveN = state.gears.filter(g => g.rid === r.id).length;
     const costStr = Object.entries(r.cost).map(([m, q]) => {
       const lack = matQty(m) < q;
       return `<span class="${lack ? "lack" : ""}">${MATERIALS[m].icon}${MATERIALS[m].name} ${matQty(m)}/${q}</span>`;
     }).join("　");
-    const typeLabel = { axe: "斧", pickaxe: "ピッケル", weapon: "武器", armor: "防具", accessory: "装飾" }[r.type];
+    const typeLabel = { weapon: "武器", armor: "防具", accessory: "装飾" }[r.type];
     const card = document.createElement("div");
-    card.className = "recipe-card" + (owned ? " owned" : "");
+    card.className = "recipe-card" + (haveN ? " owned" : "");
     card.innerHTML = `
       <div class="gicon">${r.icon}</div>
       <div class="rinfo">
-        <h4>${r.name} <span class="ttag">[${typeLabel}]</span></h4>
-        <div class="effect">${gearEffectText(r)}${owned ? "　✔作成済み" : ""}</div>
+        <h4>${r.name} <span class="ttag">[${typeLabel}]</span>${haveN ? ` <span class="ttag">所持×${haveN}</span>` : ""}</h4>
+        <div class="effect">${gearEffectText(r)}</div>
         <div class="cost">${costStr}</div>
       </div>`;
     const btn = document.createElement("button");
@@ -1490,7 +1619,7 @@ function renderShop() {
   }
 }
 
-function enhTag(id) { const lv = enhanceLv(id); return lv > 0 ? ` <span class="enh">+${lv}</span>` : ""; }
+function rarTag(g) { const r = RARITY_BY_KEY[g.rarity]; return `<span class="rar" style="color:${r.color}">★${r.name}</span>`; }
 
 function renderEquip() {
   const slots = [
@@ -1499,13 +1628,13 @@ function renderEquip() {
   const wrap = document.getElementById("equip-slots");
   wrap.innerHTML = "";
   for (const sl of slots) {
-    const id = state.equipped[sl.key];
-    const r = id ? RECIPE_BY_ID[id] : null;
+    const g = equippedGear(sl.key);
+    const r = g ? RECIPE_BY_ID[g.rid] : null;
     const div = document.createElement("div");
     div.className = "slot";
     div.innerHTML = `
       <div class="slot-name">${sl.label}</div>
-      <div class="slot-item ${r ? "" : "empty"}">${r ? r.icon + " " + r.name + enhTag(id) : "なし"}</div>`;
+      <div class="slot-item ${r ? "" : "empty"}" ${g ? `style="border-color:${RARITY_BY_KEY[g.rarity].color}"` : ""}>${g ? gearDisplayName(g) : "なし"}</div>`;
     wrap.appendChild(div);
   }
   // セット効果＆属性耐性の表示
@@ -1521,34 +1650,35 @@ function renderEquip() {
   }
   const gearWrap = document.getElementById("owned-gear");
   gearWrap.innerHTML = "";
-  if (state.owned.length === 0) {
-    gearWrap.innerHTML = `<div class="empty-note">まだ何も作っていない。「作成」タブで装備や道具を作ろう。</div>`;
+  if (state.gears.length === 0) {
+    gearWrap.innerHTML = `<div class="empty-note">まだ何も作っていない。「作成」タブで装備を作ろう。同じ装備でも作るたびにレア度と特性が変わる！</div>`;
     return;
   }
   const typeLabel = { weapon: "武器", armor: "防具", accessory: "装飾品" };
-  // 種類ごとに並べる（武器→防具→装飾品）
   const ord = { weapon: 0, armor: 1, accessory: 2 };
-  const ownedSorted = [...state.owned].filter(id => RECIPE_BY_ID[id]).sort((a, b) => (ord[RECIPE_BY_ID[a].type] ?? 9) - (ord[RECIPE_BY_ID[b].type] ?? 9));
-  for (const id of ownedSorted) {
-    const r = RECIPE_BY_ID[id];
-    const slot = r.type === "weapon" ? "weapon" : r.type === "armor" ? "armor" : r.type;
-    const equipped = state.equipped[slot] === id;
-    const canEnhance = ["weapon", "armor", "accessory"].includes(r.type);
+  const rarOrd = { legend: 0, epic: 1, rare: 2, common: 3 };
+  const list = [...state.gears].filter(g => RECIPE_BY_ID[g.rid]).sort((a, b) => {
+    const ra = RECIPE_BY_ID[a.rid], rb = RECIPE_BY_ID[b.rid];
+    return (ord[ra.type] ?? 9) - (ord[rb.type] ?? 9) || (rarOrd[a.rarity] - rarOrd[b.rarity]) || gearScoreInst(b) - gearScoreInst(a);
+  });
+  for (const g of list) {
+    const r = RECIPE_BY_ID[g.rid];
+    const slot = gearSlot(g.rid);
+    const equipped = state.equipped[slot] === g.uid;
+    const rar = RARITY_BY_KEY[g.rarity];
+    const st = gearStats(g);
+    const affixStr = g.affixes.length ? `<div class="affixes">${g.affixes.map(a => `<span class="affix">${affixLabel(a)}</span>`).join("")}</div>` : "";
     const card = document.createElement("div");
     card.className = "gear-card" + (equipped ? " equipped" : "");
-    let effText = gearEffectText(r);
-    if (canEnhance && enhanceLv(id) > 0) {
-      const s = gearStats(id);
-      effText = `現在: ${statBadges(s)}`;
-    }
+    card.style.borderColor = rar.color;
     card.innerHTML = `
       <div class="gicon">${r.icon}</div>
       <div class="ginfo">
-        <h4>${r.name}${enhTag(id)} <span class="ttag">[${typeLabel[r.type] || ""}]</span></h4>
-        <div class="effect">${effText}</div>
+        <h4>${r.name}${(g.enh || 0) > 0 ? ` <span class="enh">+${g.enh}</span>` : ""} <span class="ttag">[${typeLabel[r.type]}]</span> ${rarTag(g)}</h4>
+        <div class="effect">${statBadges(st)}</div>
+        ${affixStr}
       </div>`;
-    // カード自体タップでも装備（強化ボタン等は除く）
-    if (!equipped) { card.style.cursor = "pointer"; card.onclick = () => equipItem(id); }
+    if (!equipped) { card.style.cursor = "pointer"; card.onclick = () => equipItem(g.uid); }
     const btns = document.createElement("div");
     btns.className = "gear-btns";
     if (equipped) {
@@ -1557,25 +1687,26 @@ function renderEquip() {
       btns.appendChild(tag);
     } else {
       const btn = document.createElement("button");
-      btn.className = "action"; btn.textContent = "装備する";
-      btn.onclick = (e) => { e.stopPropagation(); equipItem(id); };
+      btn.className = "action"; btn.textContent = "装備";
+      btn.onclick = (e) => { e.stopPropagation(); equipItem(g.uid); };
       btns.appendChild(btn);
     }
-    if (canEnhance) {
-      const lv = enhanceLv(id);
-      if (lv >= ENHANCE_MAX) {
-        const m = document.createElement("span");
-        m.className = "enh-max"; m.textContent = "MAX";
-        btns.appendChild(m);
-      } else {
-        const c = enhanceCost(id);
-        const eb = document.createElement("button");
-        eb.className = "action enh-btn";
-        eb.innerHTML = `⚒ 強化+${lv + 1}<span class="enh-cost">💰${c.gold} ${MATERIALS[c.mat].icon}${c.matN}</span>`;
-        eb.disabled = state.gold < c.gold || matQty(c.mat) < c.matN;
-        eb.onclick = (e) => { e.stopPropagation(); enhance(id); };
-        btns.appendChild(eb);
-      }
+    if ((g.enh || 0) >= ENHANCE_MAX) {
+      const m = document.createElement("span"); m.className = "enh-max"; m.textContent = "MAX"; btns.appendChild(m);
+    } else {
+      const c = enhanceCost(g.uid);
+      const eb = document.createElement("button");
+      eb.className = "action enh-btn";
+      eb.innerHTML = `⚒ +${(g.enh || 0) + 1}<span class="enh-cost">💰${c.gold} ${MATERIALS[c.mat].icon}${c.matN}</span>`;
+      eb.disabled = state.gold < c.gold || matQty(c.mat) < c.matN;
+      eb.onclick = (e) => { e.stopPropagation(); enhance(g.uid); };
+      btns.appendChild(eb);
+    }
+    if (!equipped) {
+      const db = document.createElement("button");
+      db.className = "action secondary dismantle-btn"; db.textContent = "🔧分解";
+      db.onclick = (e) => { e.stopPropagation(); dismantle(g.uid); };
+      btns.appendChild(db);
     }
     card.appendChild(btns);
     gearWrap.appendChild(card);

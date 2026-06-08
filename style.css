@@ -295,8 +295,13 @@ button.secondary { background: var(--panel-2); color: var(--text); }
 .filter-row input { width: 16px; height: 16px; }
 
 /* --- 強化・装飾 --- */
-.gear-card { flex-wrap: wrap; }
-.gear-card.equipped { border-color: var(--accent); background: rgba(106,214,168,.08); }
+.gear-card { flex-wrap: wrap; border-width: 2px; }
+.gear-card.equipped { background: rgba(106,214,168,.10); box-shadow: 0 0 0 1px var(--accent) inset; }
+.rar { font-size: 11px; font-weight: 800; }
+.affixes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.affix { font-size: 11px; font-weight: 700; color: #ffe08a; background: rgba(242,193,78,.14); border: 1px solid rgba(242,193,78,.4); border-radius: 6px; padding: 1px 6px; }
+.dismantle-btn { color: var(--danger); }
+.slot-item { border: 1px solid transparent; }
 .gear-card:not(.equipped):active { filter: brightness(1.15); }
 .gear-btns { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
 .enh { color: var(--accent-2); font-weight: 800; }
