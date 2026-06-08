@@ -467,8 +467,31 @@ function newGame() {
     bossCleared: {}, dex: {}, dexClaimed: {}, questProg: {}, questClaimed: {},
     settings: { sound: true, bgm: false, craftableOnly: false },
     lastBattle: null, gauntlet: null, hard: false, tower: null, towerBest: 0,
+    loop: 0, loopUnlocked: 0,
     currentGatherArea: "grassland",
   };
+}
+
+/* ---------- 周回(NG+) / 敵スケーリング ---------- */
+// 敵のベース調整（全体を少し歯ごたえUP）
+const ENEMY_ATK_BUFF = 1.35, ENEMY_HP_BUFF = 1.1;
+function buffBase(m) {
+  m.atk = Math.round(m.atk * ENEMY_ATK_BUFF);
+  m.hp = Math.round(m.hp * ENEMY_HP_BUFF);
+  if (m.phase2) { const p = Object.assign({}, m.phase2); p.atk = Math.round(p.atk * ENEMY_ATK_BUFF); p.hp = Math.round(p.hp * ENEMY_HP_BUFF); m.phase2 = p; }
+  return m;
+}
+// 周回レベルごとの倍率：HPは控えめ・攻撃を重視（火力ゴリ押しでなく“生存”で難度を出す）
+function loopMul(loop) {
+  return { hp: Math.pow(1.3, loop), atk: Math.pow(1.6, loop), def: Math.pow(1.18, loop), exp: Math.pow(1.7, loop), gold: Math.pow(2.1, loop) };
+}
+function applyLoop(m, loop) {
+  if (!loop || loop <= 0) return m;
+  const L = loopMul(loop);
+  m.hp = Math.round(m.hp * L.hp); m.atk = Math.round(m.atk * L.atk); m.def = Math.round(m.def * L.def);
+  m.exp = Math.round(m.exp * L.exp); m.gold = Math.round(m.gold * L.gold);
+  if (m.phase2) { const p = Object.assign({}, m.phase2); p.hp = Math.round(p.hp * L.hp); p.atk = Math.round(p.atk * L.atk); p.def = Math.round(p.def * L.def); m.phase2 = p; }
+  return m;
 }
 
 let state = loadGame();
@@ -507,6 +530,8 @@ function migrateSave(s) {
   s.gauntlet = null; // 連戦は途中保存しない（リロードで中断）
   s.hard = !!s.hard;
   s.tower = null; s.towerBest = s.towerBest || 0;
+  s.loop = s.loop || 0; s.loopUnlocked = s.loopUnlocked || 0;
+  if (s.loop > s.loopUnlocked) s.loop = s.loopUnlocked;
   return s;
 }
 function readSlot(i) {
@@ -811,8 +836,8 @@ function startGauntlet(areaId) {
   state.lastBattle = { areaId, kind: "gauntlet" };
   const s = derivedStats();
   state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
-  state.gauntlet = { areaId, stage: 1, hard: !!state.hard };
-  log(`🏁 ${area.name} 全${GAUNTLET_STAGES}ステージ${state.hard ? "【🔥HARD】" : ""}に挑戦！（5=中ボス / 10=大ボス）`, "l-sys");
+  state.gauntlet = { areaId, stage: 1, hard: !!state.hard, loop: state.loop || 0 };
+  log(`🏁 ${area.name} 全${GAUNTLET_STAGES}ステージ${(state.loop || 0) > 0 ? `【周回${state.loop}】` : ""}${state.hard ? "【🔥HARD】" : ""}に挑戦！（5=中ボス / 10=大ボス）`, "l-sys");
   spawnStage();
 }
 function spawnStage() {
@@ -820,10 +845,12 @@ function spawnStage() {
   const area = AREAS.find(a => a.id === g.areaId);
   const stage = g.stage;
   const m = stageEnemy(area, stage);
+  buffBase(m);
   if (g.hard) applyHard(m);
+  applyLoop(m, g.loop || 0);
   const isBoss = m._kind === "boss";
   battle = {
-    areaId: area.id, kind: isBoss ? "boss" : "normal", gauntlet: true, stage, midboss: m._kind === "mid", hard: !!g.hard,
+    areaId: area.id, kind: isBoss ? "boss" : "normal", gauntlet: true, stage, midboss: m._kind === "mid", hard: !!g.hard, loop: g.loop || 0,
     enemy: { ...m, baseName: m.baseName || m.name, art: m.art || enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss },
     defending: false, over: false, showSkills: false, showItems: false,
   };
@@ -860,16 +887,18 @@ function startTower() {
   state.lastBattle = { kind: "tower" };
   const s = derivedStats();
   state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
-  state.tower = { floor: 1 };
+  state.tower = { floor: 1, loop: state.loop || 0 };
   log(`♾ エンドレスの塔に挑戦！倒れるまで登ろう（最高記録 ${state.towerBest || 0}F）`, "l-sys");
   spawnTowerFloor();
 }
 function spawnTowerFloor() {
   const t = state.tower; if (!t) return;
   const m = towerEnemy(t.floor);
+  buffBase(m);
+  applyLoop(m, t.loop || 0);
   const isBoss = m._kind === "boss";
   battle = {
-    areaId: m._areaId, kind: isBoss ? "boss" : "normal", tower: true, floor: t.floor,
+    areaId: m._areaId, kind: isBoss ? "boss" : "normal", tower: true, floor: t.floor, loop: t.loop || 0,
     enemy: { ...m, baseName: m.baseName, art: m.art || enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss },
     defending: false, over: false, showSkills: false, showItems: false,
   };
@@ -1125,13 +1154,14 @@ function winBattle() {
       drops.push(`${MATERIALS[d.mat].icon}${MATERIALS[d.mat].name} ×${amt}`);
     }
   }
-  // ハードモード：混沌の欠片がドロップ
-  if (battle.hard) {
+  // ハードモード/周回：混沌の欠片がドロップ
+  const diff = (battle.hard ? 1 : 0) + (battle.loop || 0);
+  if (diff >= 1) {
     const ai = AREAS.findIndex(a => a.id === battle.areaId);
     const bossish = isBoss || battle.midboss;
     let camt = 0;
-    if (bossish) camt = rand(2, 4) + Math.floor(ai / 2);
-    else if (Math.random() < 0.5) camt = 1 + Math.floor(ai / 3);
+    if (bossish) camt = (rand(2, 4) + Math.floor(ai / 2)) * diff;
+    else if (Math.random() < 0.4 + 0.1 * diff) camt = 1 + Math.floor(ai / 3) + Math.floor(diff / 2);
     if (camt > 0) { addMat("chaos", camt); questTrack("gather", "chaos", camt); drops.push(`${MATERIALS.chaos.icon}${MATERIALS.chaos.name} ×${camt}`); }
   }
   const gold = Math.round(e.gold * (1 + (ps.dropBonus || 0)));
@@ -1159,13 +1189,20 @@ function winBattle() {
     const g = state.gauntlet;
     if (g.stage >= GAUNTLET_STAGES) {
       const area = AREAS.find(a => a.id === g.areaId);
-      const bonus = (120 + area.reqLevel * 25) * (g.hard ? 3 : 1);
+      const bonus = Math.round((120 + area.reqLevel * 25) * (g.hard ? 3 : 1) * Math.pow(2, g.loop || 0));
       state.gold += bonus;
       let extra = "";
-      if (g.hard) { const c = rand(3, 6); addMat("chaos", c); questTrack("gather", "chaos", c); extra = ` ＋${MATERIALS.chaos.icon}×${c}`; }
-      log(`🏆 全${GAUNTLET_STAGES}ステージ制覇${g.hard ? "【🔥HARD】" : ""}！ クリアボーナス 💰${bonus}G${extra}！`, "l-good");
+      if (g.hard || (g.loop || 0) > 0) { const c = rand(3, 6) * (1 + (g.loop || 0)); addMat("chaos", c); questTrack("gather", "chaos", c); extra = ` ＋${MATERIALS.chaos.icon}×${c}`; }
+      log(`🏆 全${GAUNTLET_STAGES}ステージ制覇${(g.loop || 0) > 0 ? `【周回${g.loop}】` : ""}${g.hard ? "【🔥HARD】" : ""}！ クリアボーナス 💰${fmt(bonus)}G${extra}！`, "l-good");
       toast("🏆 ステージ制覇！");
       sfx("level");
+      // 最終エリアを現在の周回でクリア → 次の周回を解放
+      if (g.areaId === "castle" && (g.loop || 0) === (state.loopUnlocked || 0)) {
+        state.loopUnlocked = (state.loopUnlocked || 0) + 1;
+        state.loop = state.loopUnlocked;
+        log(`🌟 周回${state.loopUnlocked} 解放！ 敵がさらに強く、報酬も豪華に！`, "l-good");
+        toast(`🌟 周回${state.loopUnlocked} 解放！`);
+      }
       state.gauntlet = null;
       save();
       setTimeout(endBattleUI, 1000);
@@ -1391,11 +1428,24 @@ function renderAreas() {
       wrap.appendChild(rep);
     }
   }
+  // 周回（NG+）レベル選択（魔王を倒すと解放）
+  if ((state.loopUnlocked || 0) > 0) {
+    const L = loopMul(state.loop || 0);
+    const box = document.createElement("div");
+    box.className = "loop-box";
+    box.innerHTML = `<div class="loop-info">🌟 周回レベル <b>${state.loop}</b> / ${state.loopUnlocked}　<span class="sub">敵HP×${L.hp.toFixed(1)} 攻×${L.atk.toFixed(1)} ／ 報酬G×${L.gold.toFixed(1)}</span></div>`;
+    const btns = document.createElement("div"); btns.className = "loop-btns";
+    const mk = (label, fn, dis) => { const b = document.createElement("button"); b.className = "action secondary"; b.textContent = label; b.disabled = dis; b.onclick = fn; return b; };
+    btns.appendChild(mk("− 弱く", () => { state.loop = Math.max(0, (state.loop || 0) - 1); save(); renderAreas(); }, (state.loop || 0) <= 0));
+    btns.appendChild(mk("強く ＋", () => { state.loop = Math.min(state.loopUnlocked, (state.loop || 0) + 1); save(); renderAreas(); }, (state.loop || 0) >= state.loopUnlocked));
+    box.appendChild(btns);
+    wrap.appendChild(box);
+  }
   // ハードモード切替（魔王撃破で解放）
   if (hardUnlocked()) {
     const ht = document.createElement("button");
     ht.className = "action hard-toggle" + (state.hard ? " on" : " secondary");
-    ht.textContent = state.hard ? "🔥 ハードモード：ON（敵強化・混沌の欠片）" : "🔥 ハードモード：OFF";
+    ht.textContent = state.hard ? "🔥 ハードモード：ON（敵さらに強化）" : "🔥 ハードモード：OFF";
     ht.onclick = () => { state.hard = !state.hard; save(); renderAreas(); };
     wrap.appendChild(ht);
   }
@@ -1474,10 +1524,11 @@ function renderBattle() {
   const elem = weaponElement();
   const pStatus = statusIcons(state);
 
+  const loopTag = (battle.loop || 0) > 0 ? ` 🌟周回${battle.loop}` : "";
   const stageBanner = battle.gauntlet
-    ? `<div class="stage-banner${battle.hard ? " hard" : ""}">🏁 ステージ ${battle.stage}/${GAUNTLET_STAGES}${battle.hard ? " 🔥HARD" : ""}${battle.midboss ? " ⭐中ボス" : ""}${battle.kind === "boss" ? " 👑大ボス" : ""}</div>`
+    ? `<div class="stage-banner${battle.hard ? " hard" : ""}">🏁 ステージ ${battle.stage}/${GAUNTLET_STAGES}${loopTag}${battle.hard ? " 🔥HARD" : ""}${battle.midboss ? " ⭐中ボス" : ""}${battle.kind === "boss" ? " 👑大ボス" : ""}</div>`
     : battle.tower
-    ? `<div class="stage-banner tower">♾ ${battle.floor}F${battle.kind === "boss" ? " 👑ボス" : ""} ／ 最高記録 ${state.towerBest || 0}F</div>`
+    ? `<div class="stage-banner tower">♾ ${battle.floor}F${loopTag}${battle.kind === "boss" ? " 👑ボス" : ""} ／ 最高 ${state.towerBest || 0}F</div>`
     : "";
   wrap.innerHTML = `
     ${stageBanner}
