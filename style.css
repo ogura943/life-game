@@ -45,7 +45,7 @@ button { touch-action: manipulation; }
   max-width: 760px;
   margin: 0 auto;
   padding: calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
-           calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+           calc(76px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
 }
 
 /* ステータスバー（白カード・上部固定） */
@@ -78,29 +78,41 @@ button { touch-action: manipulation; }
 .bar-fill.exp { background: linear-gradient(90deg,#f0a52e,#ffce6b); }
 .bar-fill.mp { background: linear-gradient(90deg,#5a9bf0,#9ec5ff); }
 
-/* タブ */
+/* タブ（画面下部に固定するボトムメニュー） */
 #tabs {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 40;
   display: flex;
-  gap: 6px;
-  margin: 12px 0;
-  flex-wrap: wrap;
+  gap: 2px;
+  margin: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -3px 12px rgba(150,120,70,.14);
+  padding: 6px max(6px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-right));
 }
 .tab-btn {
   flex: 1;
-  min-width: 80px;
-  padding: 10px 6px;
-  border: 1px solid var(--border);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border: none;
   border-radius: 12px;
-  background: var(--panel);
+  background: transparent;
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 700;
   cursor: pointer;
-  transition: .15s;
-  box-shadow: var(--shadow-sm);
+  transition: .12s;
 }
-.tab-btn:hover { color: var(--text); }
-.tab-btn.active { background: linear-gradient(180deg,#6cc568,#52ab4f); color: #fff; border-color: transparent; box-shadow: 0 2px 6px rgba(80,150,70,.35); }
+.tab-btn .ti { font-size: 21px; line-height: 1; }
+.tab-btn .tl { font-size: 10px; font-weight: 800; }
+.tab-btn:active { transform: translateY(1px); }
+.tab-btn.active { background: #eefbe9; color: var(--accent-d); }
+/* 戦闘中のレイアウト：上=バトル / 中=ボタン / 下=メニュー（ログは隠す） */
+body.in-battle #log { display: none; }
+body.in-battle #explore-title { display: none; }
 
 /* パネル */
 .tab-panel { display: none; }
@@ -203,12 +215,28 @@ button.secondary:disabled { background: #efe9dc; color: #b6ab95; }
 .gear-card .effect { color: var(--accent-d); font-size: 12px; }
 .gear-card .equipped-tag { color: var(--accent-d); font-size: 12px; font-weight: 800; }
 
-/* 素材 */
-.material-list { display: grid; grid-template-columns: repeat(auto-fill,minmax(120px,1fr)); gap: 10px; }
-.mat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow-sm); }
-.mat-card .icon { font-size: 26px; }
-.mat-card .mname { font-size: 12px; margin-top: 2px; }
-.mat-card .mqty { font-weight: 800; color: var(--accent-2); }
+/* グループ見出し（作成・装備のタイプ別） */
+.group-head {
+  font-size: 13px; font-weight: 900; color: #6e6549;
+  margin: 14px 2px 2px; padding-bottom: 4px;
+  border-bottom: 2px solid var(--border);
+}
+.group-head:first-child { margin-top: 2px; }
+
+/* 素材（誰が落とすか付きの一覧） */
+.material-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.mat-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow-sm);
+}
+.mat-row.zero { opacity: .55; }
+.mat-row .micon { font-size: 28px; flex-shrink: 0; }
+.mat-row .minfo { flex: 1; min-width: 0; }
+.mat-row .mhead { font-size: 14px; font-weight: 800; }
+.mat-row .mqty { color: var(--accent-2); font-weight: 900; margin-left: 4px; }
+.mat-row .msrc { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+.area-mats { font-weight: 700; }
 
 /* 戦闘 */
 .battle { margin-top: 14px; }
@@ -227,11 +255,14 @@ button.secondary:disabled { background: #efe9dc; color: #b6ab95; }
 .fighter .fbar { height: 10px; background: rgba(0,0,0,.3); border-radius: 5px; overflow: hidden; }
 .fighter .fbar > div { height: 100%; background: linear-gradient(90deg,#ef6b73,#ff9aa1); transition: width .2s; }
 .fighter.enemy .fbar > div { background: linear-gradient(90deg,#d07be0,#e6b0f2); }
-.battle-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.battle-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.battle-actions .action { padding: 13px 10px; font-size: 15px; border-radius: 14px; }
+.battle-actions > .empty-note { grid-column: 1 / -1; text-align: center; }
 .fighter .wmeta { color: #ffe08a; font-weight: 700; }
 .skill-btn {
+  grid-column: 1 / -1;
   display: flex; flex-direction: column; align-items: flex-start; text-align: left;
-  flex: 1 1 100%; gap: 2px; padding: 10px 14px;
+  gap: 2px; padding: 10px 14px;
 }
 .skill-btn .mpcost { color: #fff; font-size: 12px; font-weight: 800; }
 .skill-btn .skdesc { font-size: 11px; font-weight: 400; opacity: .9; }
@@ -403,7 +434,7 @@ button.secondary:disabled { background: #efe9dc; color: #b6ab95; }
 .empty-note { color: var(--muted); font-size: 13px; padding: 10px 0; }
 
 .toast {
-  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: calc(84px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
   background: linear-gradient(180deg,#6cc568,#52ab4f); color: #fff;
   padding: 10px 18px; border-radius: 22px; font-weight: 800;
   box-shadow: 0 4px 14px rgba(80,150,70,.4); z-index: 50; animation: toastIn .3s ease-out;
@@ -413,7 +444,7 @@ button.secondary:disabled { background: #efe9dc; color: #b6ab95; }
 /* インストール案内バー */
 .install-bar {
   position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(12px + env(safe-area-inset-bottom));
+  bottom: calc(78px + env(safe-area-inset-bottom));
   width: calc(100% - 24px); max-width: 736px;
   display: flex; align-items: center; gap: 10px;
   background: var(--panel); border: 1px solid var(--border); color: var(--text);

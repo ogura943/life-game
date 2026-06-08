@@ -1436,10 +1436,12 @@ function renderAreas() {
   const det = document.createElement("div");
   det.className = "area-detail";
   const locked = state.level < a.reqLevel;
+  const matIcons = locked ? "" : areaMaterials(a).map(m => MATERIALS[m].icon).join(" ");
   det.innerHTML = `
     <h4>${a.icon} ${a.name} ${state.bossCleared[a.id] ? "👑✔" : ""}</h4>
     <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放` : a.desc}</div>
-    <div class="sub">${locked ? "" : `🏁 全${GAUNTLET_STAGES}連戦：ステージ5＝⭐中ボス / 10＝👑大ボス`}</div>`;
+    <div class="sub">${locked ? "" : `🏁 全${GAUNTLET_STAGES}連戦：ステージ5＝⭐中ボス / 10＝👑大ボス`}</div>
+    ${locked ? "" : `<div class="sub area-mats">🎁 入手素材：${matIcons}</div>`}`;
   if (!locked) {
     const btns = document.createElement("div");
     btns.className = "area-btns";
@@ -1463,8 +1465,9 @@ function statusIcons(holder) {
 
 function renderBattle() {
   const wrap = document.getElementById("battle");
-  if (!battle) { wrap.classList.add("hidden"); return; }
+  if (!battle) { wrap.classList.add("hidden"); document.body.classList.remove("in-battle"); return; }
   wrap.classList.remove("hidden");
+  document.body.classList.add("in-battle");
   const s = derivedStats();
   const e = battle.enemy;
   const wt = weaponType();
@@ -1599,11 +1602,18 @@ function renderCraft() {
 
   const order = ["axe", "pickaxe", "weapon", "armor", "accessory"];
   const sorted = [...RECIPES].filter(r => !r.rewardOnly && (!r.hard || hardUnlocked())).sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
-  let shown = 0;
+  const groupName = { weapon: "⚔ 武器", armor: "🛡 防具", accessory: "💍 装飾品" };
+  let shown = 0, lastType = null;
   for (const r of sorted) {
     const ok = canCraft(r);
     if (state.settings.craftableOnly && !ok) continue;
     shown++;
+    if (r.type !== lastType) {
+      lastType = r.type;
+      const h = document.createElement("div");
+      h.className = "group-head"; h.textContent = groupName[r.type] || r.type;
+      wrap.appendChild(h);
+    }
     const haveN = state.gears.filter(g => g.rid === r.id).length;
     const costStr = Object.entries(r.cost).map(([m, q]) => {
       const lack = matQty(m) < q;
@@ -1745,9 +1755,17 @@ function renderEquip() {
     const ra = RECIPE_BY_ID[a.rid], rb = RECIPE_BY_ID[b.rid];
     return (ord[ra.type] ?? 9) - (ord[rb.type] ?? 9) || (rarOrd[a.rarity] - rarOrd[b.rarity]) || gearScoreInst(b) - gearScoreInst(a);
   });
+  const groupName = { weapon: "⚔ 武器", armor: "🛡 防具", accessory: "💍 装飾品" };
+  let lastType = null;
   for (const g of list) {
     const r = RECIPE_BY_ID[g.rid];
     const slot = gearSlot(g.rid);
+    if (r.type !== lastType) {
+      lastType = r.type;
+      const h = document.createElement("div");
+      h.className = "group-head"; h.textContent = groupName[r.type] || r.type;
+      gearWrap.appendChild(h);
+    }
     const equipped = state.equipped[slot] === g.uid;
     const rar = RARITY_BY_KEY[g.rarity];
     const st = gearStats(g);
@@ -1797,23 +1815,42 @@ function renderEquip() {
   }
 }
 
+// 素材の入手元（どのモンスターが落とすか）
+function dropSources(matId) {
+  const out = [];
+  for (const a of AREAS) {
+    for (const mob of a.monsters) if ((mob.drops || []).some(d => d.mat === matId)) out.push({ sprite: mob.sprite, name: mob.name, area: a.name, boss: false });
+    if (a.boss && (a.boss.drops || []).some(d => d.mat === matId)) out.push({ sprite: a.boss.sprite, name: a.boss.name, area: a.name, boss: true });
+  }
+  return out;
+}
+// そのエリアで手に入る素材ID一覧
+function areaMaterials(area) {
+  const set = [];
+  const add = (arr) => { for (const d of arr || []) if (!set.includes(d.mat)) set.push(d.mat); };
+  for (const m of area.monsters) add(m.drops);
+  if (area.boss) add(area.boss.drops);
+  return set;
+}
+
 function renderBag() {
   const wrap = document.getElementById("material-list");
   wrap.innerHTML = "";
-  const entries = Object.keys(MATERIALS).filter(mid => matQty(mid) > 0);
-  if (entries.length === 0) {
-    wrap.innerHTML = `<div class="empty-note">素材を持っていない。「採集」や「探索」で集めよう。</div>`;
-    return;
-  }
   for (const mid of Object.keys(MATERIALS)) {
     const q = matQty(mid);
-    if (q <= 0) continue;
+    const srcs = dropSources(mid);
+    let srcText;
+    if (mid === "chaos") srcText = "🔥 ハードモードの敵全般";
+    else if (srcs.length) srcText = srcs.map(s => `${s.boss ? "👑" : ""}${s.sprite || ""}${s.name}`).join(" ／ ");
+    else srcText = "—";
     const card = document.createElement("div");
-    card.className = "mat-card";
+    card.className = "mat-row" + (q > 0 ? "" : " zero");
     card.innerHTML = `
-      <div class="icon">${MATERIALS[mid].icon}</div>
-      <div class="mname">${MATERIALS[mid].name}</div>
-      <div class="mqty">×${q}</div>`;
+      <div class="micon">${MATERIALS[mid].icon}</div>
+      <div class="minfo">
+        <div class="mhead">${MATERIALS[mid].name} <span class="mqty">×${q}</span></div>
+        <div class="msrc">入手元：${srcText}</div>
+      </div>`;
     wrap.appendChild(card);
   }
 }
