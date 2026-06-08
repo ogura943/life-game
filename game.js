@@ -493,6 +493,25 @@ function applyLoop(m, loop) {
   if (m.phase2) { const p = Object.assign({}, m.phase2); p.hp = Math.round(p.hp * L.hp); p.atk = Math.round(p.atk * L.atk); p.def = Math.round(p.def * L.def); m.phase2 = p; }
   return m;
 }
+// 周回(NG+)：敵の強さを「周回レベル基準」に底上げ（元の小さいステは無視）。
+//   → どのエリアでも“前周回の最終ボス以上”の強さになる。
+function applyLoopAnchor(m, loop, areaIndex, role) {
+  if (!loop || loop <= 0) return m;
+  // 周回1の通常敵 ≧ loop0 最終ボス。HPの伸びは控えめ・攻撃(致死性)で難度を出す
+  const BASE_HP = 4700, BASE_ATK = 150, BASE_DEF = 30;
+  const Lh = Math.pow(1.35, loop - 1), La = Math.pow(1.75, loop - 1), Ld = Math.pow(1.25, loop - 1);
+  const aF = 1 + areaIndex * 0.08;
+  const rHP = role === "boss" ? 1.5 : role === "mid" ? 1.25 : 1;
+  const rATK = role === "boss" ? 1.35 : role === "mid" ? 1.12 : 1;
+  const rDEF = role === "boss" ? 1.4 : role === "mid" ? 1.15 : 1;
+  m.hp = Math.round(BASE_HP * Lh * aF * rHP);
+  m.atk = Math.round(BASE_ATK * La * aF * rATK);
+  m.def = Math.round(BASE_DEF * Ld * aF * rDEF);
+  m.exp = Math.round((m.exp || 10) * Math.pow(1.9, loop));
+  m.gold = Math.round((m.gold || 50) * Math.pow(2.2, loop));
+  if (m.phase2) { const p = Object.assign({}, m.phase2); p.hp = Math.round(m.hp * 1.4); p.atk = Math.round(m.atk * 1.2); p.def = Math.round(m.def * 1.1); m.phase2 = p; }
+  return m;
+}
 
 let state = loadGame();
 let battle = null;
@@ -846,8 +865,8 @@ function spawnStage() {
   const stage = g.stage;
   const m = stageEnemy(area, stage);
   buffBase(m);
-  if (g.hard) applyHard(m);
-  applyLoop(m, g.loop || 0);
+  applyLoopAnchor(m, g.loop || 0, AREAS.indexOf(area), m._kind); // 周回は周回基準に底上げ
+  if (g.hard) applyHard(m); // ハードは最後に倍率
   const isBoss = m._kind === "boss";
   battle = {
     areaId: area.id, kind: isBoss ? "boss" : "normal", gauntlet: true, stage, midboss: m._kind === "mid", hard: !!g.hard, loop: g.loop || 0,
@@ -1430,10 +1449,12 @@ function renderAreas() {
   }
   // 周回（NG+）レベル選択（魔王を倒すと解放）
   if ((state.loopUnlocked || 0) > 0) {
-    const L = loopMul(state.loop || 0);
+    const lp = state.loop || 0;
+    const goldX = Math.pow(2.2, lp).toFixed(0);
     const box = document.createElement("div");
     box.className = "loop-box";
-    box.innerHTML = `<div class="loop-info">🌟 周回レベル <b>${state.loop}</b> / ${state.loopUnlocked}　<span class="sub">敵HP×${L.hp.toFixed(1)} 攻×${L.atk.toFixed(1)} ／ 報酬G×${L.gold.toFixed(1)}</span></div>`;
+    const lvDesc = lp === 0 ? "通常（ストーリー）" : `全エリアが最終ボス級〜（周回が上がるほど更に強く・特に攻撃が激化）`;
+    box.innerHTML = `<div class="loop-info">🌟 周回レベル <b>${lp}</b> / ${state.loopUnlocked}　<span class="sub">${lvDesc}${lp > 0 ? ` ／ 報酬G×${goldX}` : ""}</span></div>`;
     const btns = document.createElement("div"); btns.className = "loop-btns";
     const mk = (label, fn, dis) => { const b = document.createElement("button"); b.className = "action secondary"; b.textContent = label; b.disabled = dis; b.onclick = fn; return b; };
     btns.appendChild(mk("− 弱く", () => { state.loop = Math.max(0, (state.loop || 0) - 1); save(); renderAreas(); }, (state.loop || 0) <= 0));
