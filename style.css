@@ -490,3 +490,45 @@ button.secondary:disabled { background: #efe9dc; color: #b6ab95; }
 .install-go { background: linear-gradient(180deg,#6cc568,#52ab4f); color: #fff; border: none; border-radius: 10px; padding: 8px 16px; font-weight: 800; cursor: pointer; }
 .install-x { background: transparent; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px 6px; }
 .install-bar.hidden { display: none; }
+
+/* =========================================================
+   インラインSVGアイコン
+   ========================================================= */
+.ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 1.15em;
+  height: 1.15em;
+  flex-shrink: 0;
+}
+.ico svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ナビタブのアイコン */
+.tab-btn .ti.ico {
+  width: 22px;
+  height: 22px;
+}
+
+/* ヘッダーチップのアイコン */
+.hchip .hi.ico {
+  width: 15px;
+  height: 15px;
+}
+
+/* コインアイコン */
+.hero-gold .coin.ico {
+  width: 16px;
+  height: 16px;
+  color: #d4973a;
+}
+
+/* ボタン内アイコン（エクスポート/インポート/インストールバー等） */
+button .ico, span.ico {
+  pointer-events: none;
+}

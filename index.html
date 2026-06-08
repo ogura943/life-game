@@ -27,26 +27,26 @@
     <div class="hero-main">
       <div class="hero-row1">
         <span class="hero-lv">Lv.<b id="stat-level">1</b></span>
-        <span class="hero-gold"><span class="coin">🪙</span><b id="stat-gold">0</b></span>
+        <span class="hero-gold"><span class="coin ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5c.5-1 1.5-1.5 2.5-1.5s2 .5 2 1.5c0 2-4 1.5-4 4 0 1.1.9 2 2 2s2.5-.5 2.5-1.5"/><line x1="12" y1="6.5" x2="12" y2="8"/><line x1="12" y1="17" x2="12" y2="18.5"/></svg></span><b id="stat-gold">0</b></span>
       </div>
       <div class="sbar"><span class="sbl shp">HP</span><div class="bar"><div id="hp-fill" class="bar-fill"></div></div><span id="stat-hp" class="sbv">30/30</span></div>
       <div class="sbar"><span class="sbl smp">MP</span><div class="bar"><div id="mp-fill" class="bar-fill mp"></div></div><span id="stat-mp" class="sbv">10/10</span></div>
       <div class="sbar"><span class="sbl sxp">EXP</span><div class="bar"><div id="exp-fill" class="bar-fill exp"></div></div><span id="stat-exp" class="sbv">0/10</span></div>
       <div class="hero-chips">
-        <span class="hchip"><span class="hi">⚔</span><b id="stat-atk">5</b></span>
-        <span class="hchip"><span class="hi">🛡</span><b id="stat-def">2</b></span>
+        <span class="hchip"><span class="hi ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/></svg></span><b id="stat-atk">5</b></span>
+        <span class="hchip"><span class="hi ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><b id="stat-def">2</b></span>
       </div>
     </div>
   </header>
 
   <!-- タブナビ（下部固定メニュー） -->
   <nav id="tabs">
-    <button class="tab-btn active" data-tab="explore"><span class="ti">🗺</span><span class="tl">探索</span></button>
-    <button class="tab-btn" data-tab="craft"><span class="ti">🔨</span><span class="tl">作成</span></button>
-    <button class="tab-btn" data-tab="equip"><span class="ti">🎽</span><span class="tl">装備</span></button>
-    <button class="tab-btn" data-tab="shop"><span class="ti">🛒</span><span class="tl">店</span></button>
-    <button class="tab-btn" data-tab="record"><span class="ti">📖</span><span class="tl">記録</span></button>
-    <button class="tab-btn" data-tab="bag"><span class="ti">🎒</span><span class="tl">持ち物</span></button>
+    <button class="tab-btn active" data-tab="explore"><span class="ti ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></span><span class="tl">探索</span></button>
+    <button class="tab-btn" data-tab="craft"><span class="ti ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12l-8.5 8.5a2.12 2.12 0 01-3-3L12 9"/><path d="M17.64 15L22 10.64"/><path d="M20.91 11.7l-1.25-1.25c-.6-.6-.93-1.4-.93-2.25v-.86L16.01 4.6a5.56 5.56 0 00-3.94-1.64H9l.92.82A6.18 6.18 0 0112 8.4v1.56l2 2h2.47l2.26 1.91"/></svg></span><span class="tl">作成</span></button>
+    <button class="tab-btn" data-tab="equip"><span class="ti ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg></span><span class="tl">装備</span></button>
+    <button class="tab-btn" data-tab="shop"><span class="ti ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></span><span class="tl">店</span></button>
+    <button class="tab-btn" data-tab="record"><span class="ti ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></span><span class="tl">記録</span></button>
+    <button class="tab-btn" data-tab="bag"><span class="ti ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span><span class="tl">持ち物</span></button>
   </nav>
 
   <main id="content">
@@ -109,8 +109,8 @@
       <p class="hint">コードをコピーして保存すれば、別の端末やリセット後に復元できます。</p>
       <textarea id="save-code" class="save-code" placeholder="ここにセーブコードが表示されます／貼り付けてインポート"></textarea>
       <div class="save-actions">
-        <button id="export-btn" class="action secondary">📤 エクスポート</button>
-        <button id="import-btn" class="action">📥 インポート</button>
+        <button id="export-btn" class="action secondary"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> エクスポート</button>
+        <button id="import-btn" class="action"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> インポート</button>
       </div>
       <button id="reset-btn" class="danger-btn">最初からやり直す</button>
     </section>
@@ -122,9 +122,9 @@
 
 <!-- インストール案内（ホーム画面に追加） -->
 <div id="install-bar" class="install-bar hidden">
-  <span id="install-text">📲 ホーム画面に追加してアプリのように使えます</span>
+  <span id="install-text"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="10" x2="12" y2="16"/><polyline points="9 13 12 16 15 13"/></svg></span> ホーム画面に追加してアプリのように使えます</span>
   <button id="install-btn" class="install-go">追加</button>
-  <button id="install-close" class="install-x" aria-label="閉じる">✕</button>
+  <button id="install-close" class="install-x" aria-label="閉じる"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
 </div>
 
 <script src="audio.js"></script>
@@ -132,6 +132,7 @@
 <script src="backgrounds2.js"></script>
 <script src="sprites.js"></script>
 <script src="sprites2.js"></script>
+<script src="icons.js"></script>
 <script src="game.js"></script>
 <script>
 /* ---- 初回タップで音を有効化＆BGM開始 ---- */
@@ -185,7 +186,7 @@ if ("serviceWorker" in navigator) {
   // iOS：beforeinstallprompt 非対応のため手順を案内
   if (isiOS && !isStandalone && !dismissed) {
     btn.classList.add("hidden");
-    txt.innerHTML = "📲 共有ボタン <b>􀈂</b> →「ホーム画面に追加」でアプリになります";
+    txt.innerHTML = '<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="10" x2="12" y2="16"/><polyline points="9 13 12 16 15 13"/></svg></span> 共有ボタン <b>􀈂</b> →「ホーム画面に追加」でアプリになります';
     bar.classList.remove("hidden");
   }
 

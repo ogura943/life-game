@@ -35,6 +35,8 @@ const ELEMENTS = {
   lightning: { name: "雷", icon: "⚡" },
 };
 function elemLabel(e) { return e && ELEMENTS[e] ? ELEMENTS[e].icon + ELEMENTS[e].name : "—"; }
+// UI版 elemLabel: SVGアイコン付き（innerHTML に埋め込む用）
+function elemLabelUI(e) { return e && ELEMENTS[e] ? iconify(ELEMENTS[e].icon) + ELEMENTS[e].name : "—"; }
 
 /* ---------- 武器タイプ（戦い方の違い） ---------- */
 const WTYPES = {
@@ -300,7 +302,7 @@ function statBadges(s) {
   if (s.dropBonus) p.push(`ドロップ/G +${Math.round(s.dropBonus * 100)}%`);
   if (s.lifesteal) p.push(`吸収 +${Math.round(s.lifesteal * 100)}%`);
   if (s.flatdmg) p.push(`追撃 +${s.flatdmg}`);
-  if (s.resist) for (const [el, v] of Object.entries(s.resist)) p.push(`${ELEMENTS[el].icon}耐性 +${Math.round(v * 100)}%`);
+  if (s.resist) for (const [el, v] of Object.entries(s.resist)) p.push(`${iconify(ELEMENTS[el].icon)}耐性 +${Math.round(v * 100)}%`);
   return p.join(" / ");
 }
 function gearEffectText(r) {
@@ -308,7 +310,7 @@ function gearEffectText(r) {
     const w = WTYPES[r.wtype] || WTYPES.fist;
     const parts = [`ATK +${r.stats.atk}`];
     if (r.stats.mp) parts.push(`MP +${r.stats.mp}`);
-    return `${w.name}${r.element ? " / " + elemLabel(r.element) : ""} ・ ${parts.join(" / ")}（${w.note}）`;
+    return `${w.name}${r.element ? " / " + elemLabelUI(r.element) : ""} ・ ${parts.join(" / ")}（${w.note}）`;
   }
   if (r.type === "accessory") return "装飾品 ・ " + statBadges(r.stats);
   return r.desc || "";
@@ -444,7 +446,7 @@ function affixLabel(a) {
 }
 function gearDisplayName(g) {
   const r = RECIPE_BY_ID[g.rid];
-  return `${r.icon} ${r.name}${(g.enh || 0) > 0 ? " +" + g.enh : ""}`;
+  return `${iconify(r.icon)} ${r.name}${(g.enh || 0) > 0 ? " +" + g.enh : ""}`;
 }
 
 /* ---------- セーブ＆ステート（複数スロット対応） ---------- */
@@ -1463,7 +1465,7 @@ function renderAreas() {
     if (area) {
       const rep = document.createElement("button");
       rep.className = "action repeat-btn";
-      rep.textContent = `🔁 ${area.icon}${area.name} に再挑戦（連戦）`;
+      rep.innerHTML = `${icon("repeat")} ${iconify(area.icon)}${area.name} に再挑戦（連戦）`;
       rep.onclick = () => startGauntlet(lb.areaId);
       wrap.appendChild(rep);
     }
@@ -1475,7 +1477,7 @@ function renderAreas() {
     const box = document.createElement("div");
     box.className = "loop-box";
     const lvDesc = lp === 0 ? "通常（ストーリー）" : `全エリアが最終ボス級〜（周回が上がるほど更に強く・特に攻撃が激化）`;
-    box.innerHTML = `<div class="loop-info">🌟 周回レベル <b>${lp}</b> / ${state.loopUnlocked}　<span class="sub">${lvDesc}${lp > 0 ? ` ／ 報酬G×${goldX}` : ""}</span></div>`;
+    box.innerHTML = `<div class="loop-info">${icon("star")} 周回レベル <b>${lp}</b> / ${state.loopUnlocked}　<span class="sub">${lvDesc}${lp > 0 ? ` ／ 報酬G×${goldX}` : ""}</span></div>`;
     const btns = document.createElement("div"); btns.className = "loop-btns";
     const mk = (label, fn, dis) => { const b = document.createElement("button"); b.className = "action secondary"; b.textContent = label; b.disabled = dis; b.onclick = fn; return b; };
     btns.appendChild(mk("− 弱く", () => { state.loop = Math.max(0, (state.loop || 0) - 1); save(); renderAreas(); }, (state.loop || 0) <= 0));
@@ -1487,14 +1489,14 @@ function renderAreas() {
   if (hardUnlocked()) {
     const ht = document.createElement("button");
     ht.className = "action hard-toggle" + (state.hard ? " on" : " secondary");
-    ht.textContent = state.hard ? "🔥 ハードモード：ON（敵さらに強化）" : "🔥 ハードモード：OFF";
+    ht.innerHTML = state.hard ? `${icon("fire")} ハードモード：ON（敵さらに強化）` : `${icon("fire")} ハードモード：OFF`;
     ht.onclick = () => { state.hard = !state.hard; save(); renderAreas(); };
     wrap.appendChild(ht);
   }
   // エンドレスの塔
   const tw = document.createElement("button");
   tw.className = "action tower-btn";
-  tw.textContent = `♾ エンドレスの塔（最高記録 ${state.towerBest || 0}F）`;
+  tw.innerHTML = `${icon("infinity")} エンドレスの塔（最高記録 ${state.towerBest || 0}F）`;
   tw.onclick = () => startTower();
   wrap.appendChild(tw);
   // 選択中エリアの決定（未選択や未開放なら、解放済みの最奥へ）
@@ -1517,8 +1519,8 @@ function renderAreas() {
     if (!locked && typeof BG !== "undefined" && BG[a.id]) node.style.backgroundImage = `url(${BG[a.id]})`;
     node.innerHTML = `
       <span class="map-name">${a.name}</span>
-      ${locked ? `<span class="map-lock">🔒Lv${a.reqLevel}</span>` : ""}
-      ${state.bossCleared[a.id] ? `<span class="map-crown">👑</span>` : ""}`;
+      ${locked ? `<span class="map-lock">${icon("lock")}Lv${a.reqLevel}</span>` : ""}
+      ${state.bossCleared[a.id] ? `<span class="map-crown">${icon("crown")}</span>` : ""}`;
     if (!locked) node.onclick = () => { selectedArea = a.id; renderAreas(); };
     map.appendChild(node);
   });
@@ -1531,22 +1533,22 @@ function renderAreas() {
   const matIcons = locked ? "" : areaMaterials(a).map(m => MATERIALS[m].icon).join(" ");
   const aIdx = AREAS.indexOf(a);
   const stars = "★".repeat(aIdx + 1) + "☆".repeat(Math.max(0, AREAS.length - 1 - aIdx));
-  const banner = (typeof BG !== "undefined" && BG[a.id]) ? `<div class="area-banner" style="background-image:url(${BG[a.id]})">${locked ? `<div class="banner-lock">🔒 Lv.${a.reqLevel}</div>` : ""}</div>` : "";
+  const banner = (typeof BG !== "undefined" && BG[a.id]) ? `<div class="area-banner" style="background-image:url(${BG[a.id]})">${locked ? `<div class="banner-lock">${icon("lock")} Lv.${a.reqLevel}</div>` : ""}</div>` : "";
   det.innerHTML = `
     ${banner}
     <div class="area-detail-body">
-      <h4>${a.icon} ${a.name} ${state.bossCleared[a.id] ? "👑クリア済" : ""}</h4>
+      <h4>${iconify(a.icon)} ${a.name} ${state.bossCleared[a.id] ? `${icon("crown")}クリア済` : ""}</h4>
       <div class="area-stars">難易度 <span class="stars">${stars}</span></div>
-      <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放されます` : a.desc}</div>
-      <div class="sub">${locked ? "" : `🏁 全${GAUNTLET_STAGES}連戦：5＝⭐中ボス / 10＝👑大ボス`}</div>
-      ${locked ? "" : `<div class="sub area-mats">🎁 入手素材：${matIcons}</div>`}
+      <div class="sub">${locked ? `${icon("lock")} Lv.${a.reqLevel} で解放されます` : a.desc}</div>
+      <div class="sub">${locked ? "" : `${icon("flag")} 全${GAUNTLET_STAGES}連戦：5＝${icon("star")}中ボス / 10＝${icon("crown")}大ボス`}</div>
+      ${locked ? "" : `<div class="sub area-mats">${icon("gift")} 入手素材：${matIcons}</div>`}
     </div>`;
   if (!locked) {
     const body = det.querySelector(".area-detail-body") || det;
     const btns = document.createElement("div");
     btns.className = "area-btns";
     const b1 = document.createElement("button");
-    b1.className = "action challenge-btn"; b1.textContent = "⚔ 挑戦する！";
+    b1.className = "action challenge-btn"; b1.innerHTML = `${icon("sword")} 挑戦する！`;
     b1.onclick = () => startGauntlet(a.id);
     btns.appendChild(b1);
     body.appendChild(btns);
@@ -1556,9 +1558,9 @@ function renderAreas() {
 
 function statusIcons(holder) {
   return (holder.statuses || []).map(s => {
-    if (s.kind === "poison") return `🟢${s.turns}`;
-    if (s.kind === "burn") return `🔥${s.turns}`;
-    if (s.kind === "stun") return `💫`;
+    if (s.kind === "poison") return `${icon("poison")}${s.turns}`;
+    if (s.kind === "burn") return `${icon("fire")}${s.turns}`;
+    if (s.kind === "stun") return `${icon("stun")}`;
     return "";
   }).join(" ");
 }
@@ -1574,11 +1576,11 @@ function renderBattle() {
   const elem = weaponElement();
   const pStatus = statusIcons(state);
 
-  const loopTag = (battle.loop || 0) > 0 ? ` 🌟周回${battle.loop}` : "";
+  const loopTag = (battle.loop || 0) > 0 ? ` ${icon("star")}周回${battle.loop}` : "";
   const stageBanner = battle.gauntlet
-    ? `<div class="stage-banner${battle.hard ? " hard" : ""}">🏁 ステージ ${battle.stage}/${GAUNTLET_STAGES}${loopTag}${battle.hard ? " 🔥HARD" : ""}${battle.midboss ? " ⭐中ボス" : ""}${battle.kind === "boss" ? " 👑大ボス" : ""}</div>`
+    ? `<div class="stage-banner${battle.hard ? " hard" : ""}">${icon("flag")} ステージ ${battle.stage}/${GAUNTLET_STAGES}${loopTag}${battle.hard ? ` ${icon("fire")}HARD` : ""}${battle.midboss ? ` ${icon("star")}中ボス` : ""}${battle.kind === "boss" ? ` ${icon("crown")}大ボス` : ""}</div>`
     : battle.tower
-    ? `<div class="stage-banner tower">♾ ${battle.floor}F${loopTag}${battle.kind === "boss" ? " 👑ボス" : ""} ／ 最高 ${state.towerBest || 0}F</div>`
+    ? `<div class="stage-banner tower">${icon("infinity")} ${battle.floor}F${loopTag}${battle.kind === "boss" ? ` ${icon("crown")}ボス` : ""} ／ 最高 ${state.towerBest || 0}F</div>`
     : "";
   wrap.innerHTML = `
     ${stageBanner}
@@ -1589,24 +1591,25 @@ function renderBattle() {
         <div class="fname">あなた ${pStatus}</div>
         <div class="fbar"><div style="width:${state.hp / s.maxHp * 100}%"></div></div>
         <div class="sub">HP ${state.hp}/${s.maxHp}　MP ${state.mp}/${s.maxMp}</div>
-        <div class="sub wmeta">${wt.name}${elem ? " " + elemLabel(elem) : ""}</div>
+        <div class="sub wmeta">${wt.name}${elem ? " " + elemLabelUI(elem) : ""}</div>
       </div>
       <div class="vs">VS</div>
       <div class="fighter enemy">
         <div class="sprite">${spriteMarkup(e.art || enemyArtKey(e), e.isBoss)}</div>
-        <div class="fname">${e.isBoss ? "👑" : battle.midboss ? "⭐" : ""}${e.name} ${statusIcons(e)}</div>
+        <div class="fname">${e.isBoss ? icon("crown") : battle.midboss ? icon("star") : ""}${e.name} ${statusIcons(e)}</div>
         <div class="fbar"><div style="width:${e.hp / e.maxHp * 100}%"></div></div>
         <div class="sub">HP ${e.hp}/${e.maxHp}</div>
-        <div class="sub">弱点 ${elemLabel(e.weak)}${e.resist ? "・耐性 " + elemLabel(e.resist) : ""}</div>
+        <div class="sub">弱点 ${elemLabelUI(e.weak)}${e.resist ? "・耐性 " + elemLabelUI(e.resist) : ""}</div>
       </div>
     </div>
     </div>
     <div class="battle-actions" id="battle-actions"></div>`;
 
   const actions = document.getElementById("battle-actions");
+  // mk: label はHTMLを受け付ける（アイコン付き）。全て app-internal な文字列のみ
   const mk = (label, fn, cls = "action", disabled = false) => {
     const b = document.createElement("button");
-    b.className = cls; b.textContent = label; b.onclick = fn; b.disabled = disabled;
+    b.className = cls; b.innerHTML = label; b.onclick = fn; b.disabled = disabled;
     return b;
   };
 
@@ -1621,11 +1624,11 @@ function renderBattle() {
       const sk = SKILLS[sid];
       const b = document.createElement("button");
       b.className = "action skill-btn"; b.disabled = state.mp < sk.mp;
-      b.innerHTML = `${sk.icon} ${sk.name} <span class="mpcost">MP${sk.mp}</span><span class="skdesc">${sk.desc}</span>`;
+      b.innerHTML = `${iconify(sk.icon)} ${sk.name} <span class="mpcost">MP${sk.mp}</span><span class="skdesc">${sk.desc}</span>`;
       b.onclick = () => actSkill(sid);
       actions.appendChild(b);
     }
-    actions.appendChild(mk("↩ 戻る", () => { battle.showSkills = false; renderBattle(); }, "action secondary"));
+    actions.appendChild(mk(`${icon("back")} 戻る`, () => { battle.showSkills = false; renderBattle(); }, "action secondary"));
   } else if (battle.showItems) {
     const consumables = SHOP.filter(x => x.kind === "consumable" && itemQty(x.id) > 0);
     if (consumables.length === 0) {
@@ -1636,20 +1639,20 @@ function renderBattle() {
     for (const it of consumables) {
       const b = document.createElement("button");
       b.className = "action skill-btn";
-      b.innerHTML = `${it.icon} ${it.name} <span class="mpcost">×${itemQty(it.id)}</span><span class="skdesc">${it.desc}</span>`;
+      b.innerHTML = `${iconify(it.icon)} ${it.name} <span class="mpcost">×${itemQty(it.id)}</span><span class="skdesc">${it.desc}</span>`;
       b.onclick = () => actItem(it.id);
       actions.appendChild(b);
     }
-    actions.appendChild(mk("↩ 戻る", () => { battle.showItems = false; renderBattle(); }, "action secondary"));
+    actions.appendChild(mk(`${icon("back")} 戻る`, () => { battle.showItems = false; renderBattle(); }, "action secondary"));
   } else {
-    actions.appendChild(mk("⚔ 攻撃", actAttack, "action atk-act"));
-    actions.appendChild(mk("✨ スキル", () => { battle.showSkills = true; renderBattle(); }, "action skill-act", (wt.skills || []).length === 0));
-    actions.appendChild(mk("🎒 道具", () => { battle.showItems = true; renderBattle(); }, "action item-act"));
-    actions.appendChild(mk("🛡 防御", actDefend, "action def-act"));
-    const fleeLabel = battle.tower ? "🏳 撤退" : battle.gauntlet ? "🏳 中断" : "🏃 逃げる";
+    actions.appendChild(mk(`${icon("sword")} 攻撃`, actAttack, "action atk-act"));
+    actions.appendChild(mk(`${icon("sparkle")} スキル`, () => { battle.showSkills = true; renderBattle(); }, "action skill-act", (wt.skills || []).length === 0));
+    actions.appendChild(mk(`${icon("bag")} 道具`, () => { battle.showItems = true; renderBattle(); }, "action item-act"));
+    actions.appendChild(mk(`${icon("shield")} 防御`, actDefend, "action def-act"));
+    const fleeLabel = battle.tower ? `${icon("flag")} 撤退` : battle.gauntlet ? `${icon("flag")} 中断` : `${icon("flee")} 逃げる`;
     const fleeDisabled = !battle.gauntlet && !battle.tower && battle.kind === "boss";
     actions.appendChild(mk(fleeLabel, fleeBattle, "action secondary", fleeDisabled));
-    const autoBtn = mk(battle.auto ? "🔁 オート ON" : "🔁 オート OFF", () => {
+    const autoBtn = mk(battle.auto ? `${icon("repeat")} オート ON` : `${icon("repeat")} オート OFF`, () => {
       battle.auto = !battle.auto; state.autoBattle = battle.auto; save(); renderBattle();
       if (battle.auto) kickAuto();
     }, battle.auto ? "action auto-on" : "action secondary");
@@ -1664,7 +1667,7 @@ function renderGather() {
     const locked = state.level < a.reqLevel;
     const chip = document.createElement("div");
     chip.className = "chip" + (a.id === state.currentGatherArea ? " active" : "") + (locked ? " locked" : "");
-    chip.textContent = `${a.icon} ${a.name}` + (locked ? ` 🔒Lv${a.reqLevel}` : "");
+    chip.innerHTML = `${iconify(a.icon)} ${a.name}` + (locked ? ` ${icon("lock")}Lv${a.reqLevel}` : "");
     if (!locked) chip.onclick = () => { state.currentGatherArea = a.id; save(); renderGather(); };
     chipRow.appendChild(chip);
   }
@@ -1703,7 +1706,7 @@ function renderCraft() {
 
   const order = ["axe", "pickaxe", "weapon", "armor", "accessory"];
   const sorted = [...RECIPES].filter(r => !r.rewardOnly && (!r.hard || hardUnlocked())).sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
-  const groupName = { weapon: "⚔ 武器", armor: "🛡 防具", accessory: "💍 装飾品" };
+  const groupName = { weapon: `${icon("sword")} 武器`, armor: `${icon("shield")} 防具`, accessory: `${icon("ring")} 装飾品` };
   let shown = 0, lastType = null;
   for (const r of sorted) {
     const ok = canCraft(r);
@@ -1712,7 +1715,7 @@ function renderCraft() {
     if (r.type !== lastType) {
       lastType = r.type;
       const h = document.createElement("div");
-      h.className = "group-head"; h.textContent = groupName[r.type] || r.type;
+      h.className = "group-head"; h.innerHTML = groupName[r.type] || r.type;
       wrap.appendChild(h);
     }
     const haveN = state.gears.filter(g => g.rid === r.id).length;
@@ -1724,7 +1727,7 @@ function renderCraft() {
     const card = document.createElement("div");
     card.className = "recipe-card" + (haveN ? " owned" : "");
     card.innerHTML = `
-      <div class="gicon">${r.icon}</div>
+      <div class="gicon">${iconify(r.icon)}</div>
       <div class="rinfo">
         <h4>${r.name} <span class="ttag">[${typeLabel}]</span>${haveN ? ` <span class="ttag">所持×${haveN}</span>` : ""}</h4>
         <div class="effect">${gearEffectText(r)}</div>
@@ -1750,11 +1753,11 @@ function renderShop() {
     const card = document.createElement("div");
     card.className = "recipe-card";
     card.innerHTML = `
-      <div class="gicon">${it.icon}</div>
+      <div class="gicon">${iconify(it.icon)}</div>
       <div class="rinfo">
         <h4>${it.name} <span class="ttag">所持 ×${itemQty(it.id)}</span></h4>
         <div class="effect">${it.desc}</div>
-        <div class="cost">💰 ${it.price}G</div>
+        <div class="cost">${icon("coin")} ${it.price}G</div>
       </div>`;
     const btn = document.createElement("button");
     btn.className = "action"; btn.textContent = "買う"; btn.disabled = state.gold < it.price;
@@ -1769,11 +1772,11 @@ function renderShop() {
     const card = document.createElement("div");
     card.className = "recipe-card";
     card.innerHTML = `
-      <div class="gicon">${it.icon}</div>
+      <div class="gicon">${iconify(it.icon)}</div>
       <div class="rinfo">
         <h4>${it.name} <span class="ttag">購入 ${state.permBought[it.stat] || 0} 回</span></h4>
         <div class="effect">${it.desc}（買うほど高くなる）</div>
-        <div class="cost">💰 ${price}G</div>
+        <div class="cost">${icon("coin")} ${price}G</div>
       </div>`;
     const btn = document.createElement("button");
     btn.className = "action"; btn.textContent = "買う"; btn.disabled = state.gold < price;
@@ -1797,7 +1800,7 @@ function renderShop() {
           <div class="gicon">${MATERIALS[mid].icon}</div>
           <div class="rinfo">
             <h4>${MATERIALS[mid].name} <span class="ttag">所持 ×${matQty(mid)}</span></h4>
-            <div class="cost">💰 ${price}G / 個</div>
+            <div class="cost">${icon("coin")} ${price}G / 個</div>
           </div>`;
         const b1 = document.createElement("button");
         b1.className = "action secondary"; b1.textContent = "1個売る";
@@ -1837,9 +1840,9 @@ function renderEquip() {
   if (setBox) {
     const sets = activeSets();
     const ps = derivedStats();
-    const resParts = Object.entries(ps.resist).filter(([, v]) => v > 0).map(([el, v]) => `${ELEMENTS[el].icon}${Math.round(v * 100)}%`);
+    const resParts = Object.entries(ps.resist).filter(([, v]) => v > 0).map(([el, v]) => `${iconify(ELEMENTS[el].icon)}${Math.round(v * 100)}%`);
     let html = "";
-    if (sets.length) html += sets.map(s => `<div class="set-active">✨ セット効果【${s.name}】発動中：${statBadges(s.bonus)}</div>`).join("");
+    if (sets.length) html += sets.map(s => `<div class="set-active">${icon("sparkle")} セット効果【${s.name}】発動中：${statBadges(s.bonus)}</div>`).join("");
     if (resParts.length) html += `<div class="resist-line">属性耐性：${resParts.join(" / ")}</div>`;
     setBox.innerHTML = html;
   }
@@ -1856,7 +1859,7 @@ function renderEquip() {
     const ra = RECIPE_BY_ID[a.rid], rb = RECIPE_BY_ID[b.rid];
     return (ord[ra.type] ?? 9) - (ord[rb.type] ?? 9) || (rarOrd[a.rarity] - rarOrd[b.rarity]) || gearScoreInst(b) - gearScoreInst(a);
   });
-  const groupName = { weapon: "⚔ 武器", armor: "🛡 防具", accessory: "💍 装飾品" };
+  const groupName = { weapon: `${icon("sword")} 武器`, armor: `${icon("shield")} 防具`, accessory: `${icon("ring")} 装飾品` };
   let lastType = null;
   for (const g of list) {
     const r = RECIPE_BY_ID[g.rid];
@@ -1864,7 +1867,7 @@ function renderEquip() {
     if (r.type !== lastType) {
       lastType = r.type;
       const h = document.createElement("div");
-      h.className = "group-head"; h.textContent = groupName[r.type] || r.type;
+      h.className = "group-head"; h.innerHTML = groupName[r.type] || r.type;
       gearWrap.appendChild(h);
     }
     const equipped = state.equipped[slot] === g.uid;
@@ -1875,7 +1878,7 @@ function renderEquip() {
     card.className = "gear-card" + (equipped ? " equipped" : "");
     card.style.borderColor = rar.color;
     card.innerHTML = `
-      <div class="gicon">${r.icon}</div>
+      <div class="gicon">${iconify(r.icon)}</div>
       <div class="ginfo">
         <h4>${r.name}${(g.enh || 0) > 0 ? ` <span class="enh">+${g.enh}</span>` : ""} <span class="ttag">[${typeLabel[r.type]}]</span> ${rarTag(g)}</h4>
         <div class="effect">${statBadges(st)}</div>
@@ -1886,7 +1889,7 @@ function renderEquip() {
     btns.className = "gear-btns";
     if (equipped) {
       const tag = document.createElement("span");
-      tag.className = "equipped-tag"; tag.textContent = "✔ 装備中";
+      tag.className = "equipped-tag"; tag.innerHTML = `${icon("check")} 装備中`;
       btns.appendChild(tag);
     } else {
       const btn = document.createElement("button");
@@ -1900,14 +1903,14 @@ function renderEquip() {
       const c = enhanceCost(g.uid);
       const eb = document.createElement("button");
       eb.className = "action enh-btn";
-      eb.innerHTML = `⚒ +${(g.enh || 0) + 1}<span class="enh-cost">💰${c.gold} ${MATERIALS[c.mat].icon}${c.matN}</span>`;
+      eb.innerHTML = `${icon("hammer")} +${(g.enh || 0) + 1}<span class="enh-cost">${icon("coin")}${c.gold} ${MATERIALS[c.mat].icon}${c.matN}</span>`;
       eb.disabled = state.gold < c.gold || matQty(c.mat) < c.matN;
       eb.onclick = (e) => { e.stopPropagation(); enhance(g.uid); };
       btns.appendChild(eb);
     }
     if (!equipped) {
       const db = document.createElement("button");
-      db.className = "action secondary dismantle-btn"; db.textContent = "🔧分解";
+      db.className = "action secondary dismantle-btn"; db.innerHTML = `${icon("wrench")}分解`;
       db.onclick = (e) => { e.stopPropagation(); dismantle(g.uid); };
       btns.appendChild(db);
     }
@@ -1941,8 +1944,8 @@ function renderBag() {
     const q = matQty(mid);
     const srcs = dropSources(mid);
     let srcText;
-    if (mid === "chaos") srcText = "🔥 ハードモードの敵全般";
-    else if (srcs.length) srcText = srcs.map(s => `${s.boss ? "👑" : ""}${s.sprite || ""}${s.name}`).join(" ／ ");
+    if (mid === "chaos") srcText = `${icon("fire")} ハードモードの敵全般`;
+    else if (srcs.length) srcText = srcs.map(s => `${s.boss ? icon("crown") : ""}${s.sprite || ""}${s.name}`).join(" ／ ");
     else srcText = "—";
     const card = document.createElement("div");
     card.className = "mat-row" + (q > 0 ? "" : " zero");
@@ -1976,14 +1979,14 @@ function renderRecord() {
       const done = questDone(q);
       const claimed = state.questClaimed[q.id];
       const r = q.reward;
-      const rewardStr = [r.gold ? `💰${r.gold}` : "",
+      const rewardStr = [r.gold ? `${icon("coin")}${r.gold}` : "",
         ...Object.entries(r.mats || {}).map(([m, n]) => `${MATERIALS[m].icon}×${n}`),
         ...Object.entries(r.items || {}).map(([it, n]) => `${SHOP_BY_ID[it].icon}×${n}`)].filter(Boolean).join(" ");
       const card = document.createElement("div");
       card.className = "recipe-card" + (claimed ? " owned" : "");
       card.innerHTML = `
         <div class="rinfo">
-          <h4>${q.name} ${claimed ? "✔" : ""}</h4>
+          <h4>${q.name} ${claimed ? icon("check") : ""}</h4>
           <div class="effect">進捗 ${Math.min(prog, q.count)}/${q.count} ・ 報酬 ${rewardStr}</div>
           <div class="bar quest-bar"><div class="bar-fill exp" style="width:${Math.min(100, prog / q.count * 100)}%"></div></div>
         </div>`;
@@ -2011,13 +2014,13 @@ function renderRecord() {
       const r = m.reward;
       const claimed = state.dexClaimed[i];
       const ok = dexCount() >= m.n;
-      const rewardStr = [r.gold ? `💰${r.gold}` : "",
+      const rewardStr = [r.gold ? `${icon("coin")}${r.gold}` : "",
         ...Object.entries(r.mats || {}).map(([mat, n]) => `${MATERIALS[mat].icon}×${n}`),
         ...Object.entries(r.items || {}).map(([it, n]) => `${SHOP_BY_ID[it].icon}×${n}`),
-        r.owned ? `${RECIPE_BY_ID[r.owned].icon}${RECIPE_BY_ID[r.owned].name}` : ""].filter(Boolean).join(" ");
+        r.owned ? `${iconify(RECIPE_BY_ID[r.owned].icon)}${RECIPE_BY_ID[r.owned].name}` : ""].filter(Boolean).join(" ");
       const card = document.createElement("div");
       card.className = "recipe-card" + (claimed ? " owned" : "");
-      card.innerHTML = `<div class="rinfo"><h4>図鑑 ${m.n}種 ${claimed ? "✔" : ""}</h4><div class="effect">報酬 ${rewardStr}</div></div>`;
+      card.innerHTML = `<div class="rinfo"><h4>図鑑 ${m.n}種 ${claimed ? icon("check") : ""}</h4><div class="effect">報酬 ${rewardStr}</div></div>`;
       const b = document.createElement("button");
       b.className = "action"; b.textContent = claimed ? "受取済" : (ok ? "受取" : `${m.n}種で解放`);
       b.disabled = claimed || !ok;
@@ -2039,9 +2042,9 @@ function renderRecord() {
       card.innerHTML = `
         ${art}
         <div class="dex-info">
-          <h4>${found ? (m.isBoss ? "👑" : "") + m.name : "？？？"}</h4>
+          <h4>${found ? (m.isBoss ? icon("crown") : "") + m.name : "？？？"}</h4>
           <div class="sub">${found ? `${m.area} ・ 撃破 ${cnt}` : "未発見"}</div>
-          ${found ? `<div class="sub">弱点 ${elemLabel(m.weak)}${m.resist ? "・耐性 " + elemLabel(m.resist) : ""}</div>
+          ${found ? `<div class="sub">弱点 ${elemLabelUI(m.weak)}${m.resist ? "・耐性 " + elemLabelUI(m.resist) : ""}</div>
           <div class="sub">ドロップ: ${(m.drops || []).map(d => MATERIALS[d.mat].icon).join(" ")}</div>` : ""}
         </div>`;
       dWrap.appendChild(card);
@@ -2060,8 +2063,8 @@ function renderSettings() {
     row.querySelector("input").onchange = (e) => { state.settings[key] = e.target.checked; save(); if (onChange) onChange(); };
     return row;
   };
-  wrap.appendChild(mk("🔊 効果音", "sound"));
-  wrap.appendChild(mk("🎵 BGM", "bgm", () => { if (typeof toggleBgm === "function") toggleBgm(); }));
+  wrap.appendChild(mk(`${icon("sound")} 効果音`, "sound"));
+  wrap.appendChild(mk(`${icon("music")} BGM`, "bgm", () => { if (typeof toggleBgm === "function") toggleBgm(); }));
 }
 
 function renderSaveUI() {
@@ -2075,7 +2078,7 @@ function renderSaveUI() {
     card.innerHTML = `
       <div class="slot-sum">
         <b>スロット${i + 1}${i === currentSlot ? "（使用中）" : ""}</b>
-        <span class="sub">${sum ? `Lv.${sum.level} ・ 💰${fmt(sum.gold)}` : "（空き）"}</span>
+        <span class="sub">${sum ? `Lv.${sum.level} ・ ${icon("coin")}${fmt(sum.gold)}` : "（空き）"}</span>
       </div>`;
     const btns = document.createElement("div");
     btns.className = "slot-card-btns";
@@ -2087,7 +2090,7 @@ function renderSaveUI() {
     }
     if (sum) {
       const del = document.createElement("button");
-      del.className = "action secondary slot-del"; del.textContent = "🗑";
+      del.className = "action secondary slot-del"; del.innerHTML = icon("trash");
       del.onclick = () => deleteSlot(i);
       btns.appendChild(del);
     }
