@@ -803,7 +803,7 @@ function startBattle(areaId, kind = "normal") {
   if (kind === "boss") m = area.boss;
   else m = area.monsters[rand(0, area.monsters.length - 1)];
   const s = derivedStats();
-  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
+  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = []; state.stunImmune = 0;
   battle = {
     areaId, kind,
     enemy: { ...m, baseName: m.name, art: enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss: kind === "boss" },
@@ -855,7 +855,7 @@ function startGauntlet(areaId) {
   if (state.hard && !hardUnlocked()) state.hard = false;
   state.lastBattle = { areaId, kind: "gauntlet" };
   const s = derivedStats();
-  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
+  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = []; state.stunImmune = 0;
   state.gauntlet = { areaId, stage: 1, hard: !!state.hard, loop: state.loop || 0 };
   log(`🏁 ${area.name} 全${GAUNTLET_STAGES}ステージ${(state.loop || 0) > 0 ? `【周回${state.loop}】` : ""}${state.hard ? "【🔥HARD】" : ""}に挑戦！（5=中ボス / 10=大ボス）`, "l-sys");
   spawnStage();
@@ -911,7 +911,7 @@ function towerEnemy(floor) {
 function startTower() {
   state.lastBattle = { kind: "tower" };
   const s = derivedStats();
-  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
+  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = []; state.stunImmune = 0;
   state.tower = { floor: 1, loop: state.loop || 0 };
   log(`♾ エンドレスの塔に挑戦！倒れるまで登ろう（最高記録 ${state.towerBest || 0}F）`, "l-sys");
   spawnTowerFloor();
@@ -945,12 +945,19 @@ function inflict(target, name, kind, sourceAtk) {
     else target.statuses.push({ kind, dmg, turns: 3 });
     log(`${name} は${kind === "poison" ? "毒" : "火傷"}状態になった！`, toPlayer ? "l-bad" : "l-good");
   } else if (kind === "stun") {
+    // スタン耐性：直前にスタンした相手は一定ターン、再スタンが効かない（はめ殺し防止）
+    if ((target.stunImmune || 0) > 0) {
+      log(`${name} はスタンが効かない！（耐性中）`, toPlayer ? "l-good" : "l-sys");
+      return;
+    }
     const ex = target.statuses.find(s => s.kind === "stun");
     if (ex) ex.turns = Math.max(ex.turns, 1);
     else target.statuses.push({ kind: "stun", turns: 1 });
+    target.stunImmune = STUN_IMMUNE_TURNS; // この後しばらく再スタン無効
     log(`${name} は痺れて動けなくなった！`, toPlayer ? "l-bad" : "l-good");
   }
 }
+const STUN_IMMUNE_TURNS = 3;
 
 // 継続ダメージ処理（死亡したら true）
 function tickDoT(target, name) {
@@ -1087,6 +1094,8 @@ function finishPlayerAction() {
 
 function enemyPhase() {
   const e = battle.enemy;
+  // スタン耐性のクールタイムを進める（はめ殺し防止）
+  if (e.stunImmune > 0) e.stunImmune--;
   // 敵の継続ダメージ
   if (tickDoT(e, e.name)) { winBattle(); return; }
 
@@ -1131,6 +1140,8 @@ function enemyPhase() {
 // プレイヤーのターン開始（継続ダメージ・スタン処理）
 function startPlayerTurn() {
   if (!battle || battle.over) return;
+  // スタン耐性のクールタイムを進める（はめ殺し防止）
+  if (state.stunImmune > 0) state.stunImmune--;
   if (tickDoT(state, "あなた")) { loseBattle(); return; }
   if (consumeStun(state)) {
     log(`あなたは痺れて動けない！`, "l-bad");
@@ -1154,7 +1165,7 @@ function transformBoss() {
   if (p.resist) e.resist = p.resist;
   if (p.atkElement) e.atkElement = p.atkElement;
   if (p.inflict) { e.inflict = p.inflict; e.inflictChance = p.inflictChance || 0.35; }
-  e.enraged = false; e.statuses = [];
+  e.enraged = false; e.statuses = []; e.stunImmune = 0;
   log(`💥 ${e.name} ——まだ終わらない！第2形態だ！`, "l-bad");
   toast("ボスが変身した！");
   sfx("transform");
@@ -1271,7 +1282,7 @@ function loseBattle() {
   state.gold -= lost;
   if (lost > 0) log(`動揺して ${lost}G を落とした。`, "l-gold");
   const s = derivedStats();
-  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
+  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = []; state.stunImmune = 0;
   toast("やられてしまった…");
   sfx("lose");
   save();
