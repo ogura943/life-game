@@ -467,7 +467,7 @@ function newGame() {
     bossCleared: {}, dex: {}, dexClaimed: {}, questProg: {}, questClaimed: {},
     settings: { sound: true, bgm: false, craftableOnly: false },
     lastBattle: null, gauntlet: null, hard: false, tower: null, towerBest: 0,
-    loop: 0, loopUnlocked: 0,
+    loop: 0, loopUnlocked: 0, autoBattle: false,
     currentGatherArea: "grassland",
   };
 }
@@ -551,6 +551,7 @@ function migrateSave(s) {
   s.tower = null; s.towerBest = s.towerBest || 0;
   s.loop = s.loop || 0; s.loopUnlocked = s.loopUnlocked || 0;
   if (s.loop > s.loopUnlocked) s.loop = s.loopUnlocked;
+  s.autoBattle = !!s.autoBattle;
   return s;
 }
 function readSlot(i) {
@@ -871,13 +872,18 @@ function spawnStage() {
   battle = {
     areaId: area.id, kind: isBoss ? "boss" : "normal", gauntlet: true, stage, midboss: m._kind === "mid", hard: !!g.hard, loop: g.loop || 0,
     enemy: { ...m, baseName: m.baseName || m.name, art: m.art || enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss },
-    defending: false, over: false, showSkills: false, showItems: false,
+    defending: false, over: false, showSkills: false, showItems: false, auto: !!state.autoBattle,
   };
   if (isBoss) { log(`👑 ステージ${stage}：大ボス『${m.name}』！`, "l-bad"); sfx("boss"); }
   else if (m._kind === "mid") { log(`⭐ ステージ${stage}：中ボス『${m.name}』！`, "l-bad"); sfx("boss"); }
   else log(`⚔ ステージ${stage}/${GAUNTLET_STAGES}：${m.name} が現れた！`, "l-sys");
   document.getElementById("area-list").classList.add("hidden");
   renderBattle(); renderStatus();
+  kickAuto();
+}
+// オートが有効なら自動で攻撃を開始
+function kickAuto() {
+  if (battle && battle.auto && !battle.over) setTimeout(() => { if (battle && !battle.over && battle.auto) actAttack(); }, 550);
 }
 
 /* ---------- エンドレスの塔（無限・10階ごとにボス） ---------- */
@@ -919,12 +925,13 @@ function spawnTowerFloor() {
   battle = {
     areaId: m._areaId, kind: isBoss ? "boss" : "normal", tower: true, floor: t.floor, loop: t.loop || 0,
     enemy: { ...m, baseName: m.baseName, art: m.art || enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss },
-    defending: false, over: false, showSkills: false, showItems: false,
+    defending: false, over: false, showSkills: false, showItems: false, auto: !!state.autoBattle,
   };
   if (isBoss) { log(`👑 ${t.floor}F：強化された『${m.name}』！`, "l-bad"); sfx("boss"); }
   else log(`⚔ ${t.floor}F：${m.name} が現れた！`, "l-sys");
   document.getElementById("area-list").classList.add("hidden");
   renderBattle(); renderStatus();
+  kickAuto();
 }
 
 // 状態異常の付与（敵にも自分にも使える）
@@ -1415,9 +1422,12 @@ function buyItem(id) {
 /* =========================================================
    レンダリング
    ========================================================= */
+let _portraitSet = false;
 function renderStatus() {
   clampVitals();
   const s = derivedStats();
+  const portrait = document.getElementById("hero-portrait");
+  if (portrait && !_portraitSet && typeof spriteMarkup === "function") { portrait.innerHTML = spriteMarkup("hero", false); _portraitSet = true; }
   document.getElementById("stat-level").textContent = state.level;
   document.getElementById("stat-hp").textContent = `${state.hp}/${s.maxHp}`;
   document.getElementById("hp-fill").style.width = (state.hp / s.maxHp * 100) + "%";
@@ -1508,19 +1518,27 @@ function renderAreas() {
   det.className = "area-detail";
   const locked = state.level < a.reqLevel;
   const matIcons = locked ? "" : areaMaterials(a).map(m => MATERIALS[m].icon).join(" ");
+  const aIdx = AREAS.indexOf(a);
+  const stars = "★".repeat(aIdx + 1) + "☆".repeat(Math.max(0, AREAS.length - 1 - aIdx));
+  const banner = (typeof BG !== "undefined" && BG[a.id]) ? `<div class="area-banner" style="background-image:url(${BG[a.id]})">${locked ? `<div class="banner-lock">🔒 Lv.${a.reqLevel}</div>` : ""}</div>` : "";
   det.innerHTML = `
-    <h4>${a.icon} ${a.name} ${state.bossCleared[a.id] ? "👑✔" : ""}</h4>
-    <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放` : a.desc}</div>
-    <div class="sub">${locked ? "" : `🏁 全${GAUNTLET_STAGES}連戦：ステージ5＝⭐中ボス / 10＝👑大ボス`}</div>
-    ${locked ? "" : `<div class="sub area-mats">🎁 入手素材：${matIcons}</div>`}`;
+    ${banner}
+    <div class="area-detail-body">
+      <h4>${a.icon} ${a.name} ${state.bossCleared[a.id] ? "👑クリア済" : ""}</h4>
+      <div class="area-stars">難易度 <span class="stars">${stars}</span></div>
+      <div class="sub">${locked ? `🔒 Lv.${a.reqLevel} で解放されます` : a.desc}</div>
+      <div class="sub">${locked ? "" : `🏁 全${GAUNTLET_STAGES}連戦：5＝⭐中ボス / 10＝👑大ボス`}</div>
+      ${locked ? "" : `<div class="sub area-mats">🎁 入手素材：${matIcons}</div>`}
+    </div>`;
   if (!locked) {
+    const body = det.querySelector(".area-detail-body") || det;
     const btns = document.createElement("div");
     btns.className = "area-btns";
     const b1 = document.createElement("button");
-    b1.className = "action"; b1.textContent = "⚔ 挑戦する（連戦）";
+    b1.className = "action challenge-btn"; b1.textContent = "⚔ 挑戦する！";
     b1.onclick = () => startGauntlet(a.id);
     btns.appendChild(b1);
-    det.appendChild(btns);
+    body.appendChild(btns);
   }
   wrap.appendChild(det);
 }
@@ -1620,10 +1638,10 @@ function renderBattle() {
     const fleeLabel = battle.tower ? "🏳 撤退" : battle.gauntlet ? "🏳 中断" : "🏃 逃げる";
     const fleeDisabled = !battle.gauntlet && !battle.tower && battle.kind === "boss";
     actions.appendChild(mk(fleeLabel, fleeBattle, "action secondary", fleeDisabled));
-    const autoBtn = mk(battle.auto ? "🔁 オート:ON" : "🔁 オート", () => {
-      battle.auto = !battle.auto; renderBattle();
-      if (battle.auto && !battle.over) setTimeout(() => { if (battle && !battle.over && battle.auto) actAttack(); }, 300);
-    }, battle.auto ? "action" : "action secondary");
+    const autoBtn = mk(battle.auto ? "🔁 オート ON" : "🔁 オート OFF", () => {
+      battle.auto = !battle.auto; state.autoBattle = battle.auto; save(); renderBattle();
+      if (battle.auto) kickAuto();
+    }, battle.auto ? "action auto-on" : "action secondary");
     actions.appendChild(autoBtn);
   }
 }

@@ -48,24 +48,43 @@ button { touch-action: manipulation; }
            calc(76px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
 }
 
-/* ステータスバー（白カード・上部固定） */
+/* ステータスバー（キャラ顔つき・白カード・上部固定） */
 #status-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 10px 14px;
+  border-radius: 18px;
+  padding: 11px 13px;
   box-shadow: var(--shadow);
   position: sticky;
   top: env(safe-area-inset-top);
   z-index: 20;
 }
-.stat { display: flex; align-items: center; gap: 5px; font-weight: 700; font-size: 14px; }
-.stat-label { color: var(--muted); font-size: 12px; }
-.hp-stat, .mp-stat, .exp-stat { flex: 1; min-width: 130px; }
+.hero-portrait {
+  width: 60px; height: 60px; flex: 0 0 auto;
+  border-radius: 15px;
+  background: linear-gradient(180deg,#fbe9c4,#f3d79a);
+  border: 2px solid #e9cf94;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(255,255,255,.5);
+}
+.hero-portrait .sprite-inner { width: 52px; height: 52px; animation: none; }
+.hero-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.hero-row1 { display: flex; justify-content: space-between; align-items: center; }
+.hero-lv { font-size: 15px; font-weight: 800; color: #6a5630; }
+.hero-lv b { color: #e08f1a; font-size: 18px; margin-left: 1px; }
+.hero-gold { font-size: 14px; font-weight: 800; color: #caa33a; display: flex; align-items: center; gap: 3px; }
+.hero-gold .coin { font-size: 13px; }
+.sbar { display: flex; align-items: center; gap: 6px; }
+.sbl { font-size: 9px; font-weight: 800; width: 28px; color: #fff; text-align: center; border-radius: 5px; padding: 1px 0; letter-spacing: .02em; }
+.sbl.shp { background: #ef6b73; } .sbl.smp { background: #5a9bf0; } .sbl.sxp { background: #f0a52e; }
+.sbar .bar { height: 11px; }
+.sbv { font-size: 10px; color: var(--muted); min-width: 66px; text-align: right; font-weight: 700; }
+.hero-chips { display: flex; gap: 8px; margin-top: 1px; }
+.hchip { font-size: 12px; font-weight: 800; background: #f4efe3; border: 1px solid var(--border); border-radius: 8px; padding: 1px 9px; color: #6e6549; display: flex; align-items: center; gap: 3px; }
+.hchip .hi { font-size: 12px; }
 .bar {
   flex: 1;
   height: 12px;
@@ -361,10 +380,18 @@ button.secondary:disabled { background: #efe9dc; color: #b6ab95; }
 .map-crown { position: absolute; top: 2px; right: 4px; font-size: 15px; }
 .map-conn { flex: 0 0 auto; width: 16px; height: 4px; background: var(--accent); border-radius: 2px; }
 .map-conn.locked { background: #d8cdb2; }
-.area-detail { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow-sm); }
-.area-detail h4 { margin: 0 0 4px; font-size: 16px; }
-.area-detail .sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-.area-detail .area-btns { margin-top: 4px; }
+.area-detail { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+.area-banner { height: 96px; background-size: cover; background-position: center; image-rendering: pixelated; position: relative; border-bottom: 1px solid var(--border); }
+.banner-lock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(40,30,20,.5); color: #fff; font-weight: 800; font-size: 16px; }
+.area-detail-body { padding: 12px 14px; }
+.area-detail h4 { margin: 0 0 4px; font-size: 17px; }
+.area-detail .sub { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.area-detail .area-mats { font-size: 16px; }
+.area-stars { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+.area-stars .stars { color: #f0a52e; font-size: 15px; letter-spacing: 1px; }
+.area-detail .area-btns { margin-top: 10px; }
+.challenge-btn { width: 100%; font-size: 16px; padding: 13px; }
+.auto-on { background: linear-gradient(180deg,#f0a52e,#e08f1a) !important; }
 .dex-progress { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
 
 /* 2Dフィールド（未使用だが軽くライト化） */
