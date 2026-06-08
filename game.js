@@ -1538,10 +1538,10 @@ function renderBattle() {
     }
     actions.appendChild(mk("↩ 戻る", () => { battle.showItems = false; renderBattle(); }, "action secondary"));
   } else {
-    actions.appendChild(mk("⚔ 攻撃", actAttack));
-    actions.appendChild(mk("✨ スキル", () => { battle.showSkills = true; renderBattle(); }, "action", (wt.skills || []).length === 0));
-    actions.appendChild(mk("🎒 道具", () => { battle.showItems = true; renderBattle(); }, "action"));
-    actions.appendChild(mk("🛡 防御", actDefend, "action secondary"));
+    actions.appendChild(mk("⚔ 攻撃", actAttack, "action atk-act"));
+    actions.appendChild(mk("✨ スキル", () => { battle.showSkills = true; renderBattle(); }, "action skill-act", (wt.skills || []).length === 0));
+    actions.appendChild(mk("🎒 道具", () => { battle.showItems = true; renderBattle(); }, "action item-act"));
+    actions.appendChild(mk("🛡 防御", actDefend, "action def-act"));
     const fleeLabel = battle.tower ? "🏳 撤退" : battle.gauntlet ? "🏳 中断" : "🏃 逃げる";
     const fleeDisabled = !battle.gauntlet && !battle.tower && battle.kind === "boss";
     actions.appendChild(mk(fleeLabel, fleeBattle, "action secondary", fleeDisabled));
