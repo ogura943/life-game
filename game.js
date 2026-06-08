@@ -462,7 +462,7 @@ function newGame() {
     equipped: { weapon: null, armor: null, accessory: null },
     bossCleared: {}, dex: {}, dexClaimed: {}, questProg: {}, questClaimed: {},
     settings: { sound: true, bgm: false, craftableOnly: false },
-    lastBattle: null, gauntlet: null, hard: false,
+    lastBattle: null, gauntlet: null, hard: false, tower: null, towerBest: 0,
     currentGatherArea: "grassland",
   };
 }
@@ -502,6 +502,7 @@ function migrateSave(s) {
   s.settings = Object.assign({ sound: true, bgm: false, craftableOnly: false }, s.settings);
   s.gauntlet = null; // 連戦は途中保存しない（リロードで中断）
   s.hard = !!s.hard;
+  s.tower = null; s.towerBest = s.towerBest || 0;
   return s;
 }
 function readSlot(i) {
@@ -829,6 +830,51 @@ function spawnStage() {
   renderBattle(); renderStatus();
 }
 
+/* ---------- エンドレスの塔（無限・10階ごとにボス） ---------- */
+function towerEnemy(floor) {
+  const isBoss = floor % 10 === 0;
+  const maxAreaIdx = Math.min(AREAS.length - 1, Math.floor(floor / 8));
+  const area = AREAS[isBoss ? maxAreaIdx : rand(0, maxAreaIdx)];
+  const base = isBoss ? area.boss : area.monsters[rand(0, area.monsters.length - 1)];
+  const hpMul = 1 + (floor - 1) * 0.28;
+  const atkMul = 1 + (floor - 1) * 0.13;
+  const defMul = 1 + (floor - 1) * 0.06;
+  const rwMul = 1 + (floor - 1) * 0.2;
+  const m = Object.assign({}, base, {
+    _areaId: area.id, _kind: isBoss ? "boss" : "normal", baseName: base.name, art: ART_BY_NAME[base.name],
+    hp: Math.round(base.hp * hpMul), atk: Math.round(base.atk * atkMul), def: Math.round(base.def * defMul),
+    exp: Math.round(base.exp * rwMul), gold: Math.round(base.gold * rwMul),
+  });
+  if (isBoss && base.phase2) {
+    const p = Object.assign({}, base.phase2);
+    p.hp = Math.round(p.hp * hpMul); p.atk = Math.round(p.atk * atkMul); p.def = Math.round(p.def * defMul);
+    m.phase2 = p;
+  }
+  return m;
+}
+function startTower() {
+  state.lastBattle = { kind: "tower" };
+  const s = derivedStats();
+  state.hp = s.maxHp; state.mp = s.maxMp; state.statuses = [];
+  state.tower = { floor: 1 };
+  log(`♾ エンドレスの塔に挑戦！倒れるまで登ろう（最高記録 ${state.towerBest || 0}F）`, "l-sys");
+  spawnTowerFloor();
+}
+function spawnTowerFloor() {
+  const t = state.tower; if (!t) return;
+  const m = towerEnemy(t.floor);
+  const isBoss = m._kind === "boss";
+  battle = {
+    areaId: m._areaId, kind: isBoss ? "boss" : "normal", tower: true, floor: t.floor,
+    enemy: { ...m, baseName: m.baseName, art: m.art || enemyArtKey(m), maxHp: m.hp, hp: m.hp, statuses: [], enraged: false, isBoss },
+    defending: false, over: false, showSkills: false, showItems: false,
+  };
+  if (isBoss) { log(`👑 ${t.floor}F：強化された『${m.name}』！`, "l-bad"); sfx("boss"); }
+  else log(`⚔ ${t.floor}F：${m.name} が現れた！`, "l-sys");
+  document.getElementById("area-list").classList.add("hidden");
+  renderBattle(); renderStatus();
+}
+
 // 状態異常の付与（敵にも自分にも使える）
 function inflict(target, name, kind, sourceAtk) {
   if (!target.statuses) target.statuses = [];
@@ -1126,6 +1172,20 @@ function winBattle() {
     }
     return;
   }
+  // エンドレスの塔：次の階へ（HP/MP持ち越し・回復なし）
+  if (battle.tower && state.tower) {
+    state.towerBest = Math.max(state.towerBest || 0, state.tower.floor);
+    if (state.tower.floor % 5 === 0) {
+      const c = Math.floor(state.tower.floor / 5);
+      addMat("chaos", c); questTrack("gather", "chaos", c);
+      log(`🎁 ${state.tower.floor}F到達ボーナス ${MATERIALS.chaos.icon}×${c}！`, "l-gold");
+    }
+    state.tower.floor++;
+    log(`▲ ${state.tower.floor}F へ登る！（HP/MP持ち越し）`, "l-sys");
+    save();
+    setTimeout(() => { if (state.tower) spawnTowerFloor(); }, 850);
+    return;
+  }
   save();
   setTimeout(endBattleUI, 700);
 }
@@ -1134,9 +1194,11 @@ function loseBattle() {
   battle.over = true;
   renderBattle(); flushFx();
   const wasGauntlet = !!battle.gauntlet;
-  const stage = battle.stage;
+  const wasTower = !!battle.tower;
+  const stage = battle.stage, floor = battle.floor;
+  if (wasTower) { state.towerBest = Math.max(state.towerBest || 0, floor); state.tower = null; }
   state.gauntlet = null;
-  log(wasGauntlet ? `💀 ステージ${stage}で力尽きた…拠点に戻った。` : `💀 倒れてしまった…拠点に戻った。`, "l-bad");
+  log(wasTower ? `💀 塔 ${floor}F で力尽きた…（最高記録 ${state.towerBest}F）` : (wasGauntlet ? `💀 ステージ${stage}で力尽きた…拠点に戻った。` : `💀 倒れてしまった…拠点に戻った。`), "l-bad");
   const lost = Math.floor(state.gold * 0.15);
   state.gold -= lost;
   if (lost > 0) log(`動揺して ${lost}G を落とした。`, "l-gold");
@@ -1150,6 +1212,15 @@ function loseBattle() {
 
 function fleeBattle() {
   if (!battle) return;
+  if (battle.tower) {
+    if (!confirm("塔から撤退しますか？（最高記録は保存されます）")) return;
+    state.towerBest = Math.max(state.towerBest || 0, battle.floor);
+    log(`🏳 ${battle.floor}F で塔から撤退した。（最高記録 ${state.towerBest}F）`, "l-sys");
+    state.tower = null;
+    sfx("flee");
+    endBattleUI();
+    return;
+  }
   if (battle.gauntlet) {
     if (!confirm("挑戦を中断して拠点に戻りますか？（途中のステージ報酬は獲得済み）")) return;
     log("🏳 連戦を中断した。", "l-sys");
@@ -1323,6 +1394,12 @@ function renderAreas() {
     ht.onclick = () => { state.hard = !state.hard; save(); renderAreas(); };
     wrap.appendChild(ht);
   }
+  // エンドレスの塔
+  const tw = document.createElement("button");
+  tw.className = "action tower-btn";
+  tw.textContent = `♾ エンドレスの塔（最高記録 ${state.towerBest || 0}F）`;
+  tw.onclick = () => startTower();
+  wrap.appendChild(tw);
   // 選択中エリアの決定（未選択や未開放なら、解放済みの最奥へ）
   const unlocked = AREAS.filter(a => state.level >= a.reqLevel);
   if (!selectedArea || state.level < (AREAS.find(a => a.id === selectedArea) || {}).reqLevel) {
@@ -1391,6 +1468,8 @@ function renderBattle() {
 
   const stageBanner = battle.gauntlet
     ? `<div class="stage-banner${battle.hard ? " hard" : ""}">🏁 ステージ ${battle.stage}/${GAUNTLET_STAGES}${battle.hard ? " 🔥HARD" : ""}${battle.midboss ? " ⭐中ボス" : ""}${battle.kind === "boss" ? " 👑大ボス" : ""}</div>`
+    : battle.tower
+    ? `<div class="stage-banner tower">♾ ${battle.floor}F${battle.kind === "boss" ? " 👑ボス" : ""} ／ 最高記録 ${state.towerBest || 0}F</div>`
     : "";
   wrap.innerHTML = `
     ${stageBanner}
@@ -1458,8 +1537,8 @@ function renderBattle() {
     actions.appendChild(mk("✨ スキル", () => { battle.showSkills = true; renderBattle(); }, "action", (wt.skills || []).length === 0));
     actions.appendChild(mk("🎒 道具", () => { battle.showItems = true; renderBattle(); }, "action"));
     actions.appendChild(mk("🛡 防御", actDefend, "action secondary"));
-    const fleeLabel = battle.gauntlet ? "🏳 中断" : "🏃 逃げる";
-    const fleeDisabled = !battle.gauntlet && battle.kind === "boss";
+    const fleeLabel = battle.tower ? "🏳 撤退" : battle.gauntlet ? "🏳 中断" : "🏃 逃げる";
+    const fleeDisabled = !battle.gauntlet && !battle.tower && battle.kind === "boss";
     actions.appendChild(mk(fleeLabel, fleeBattle, "action secondary", fleeDisabled));
     const autoBtn = mk(battle.auto ? "🔁 オート:ON" : "🔁 オート", () => {
       battle.auto = !battle.auto; renderBattle();
