@@ -491,6 +491,14 @@ button.secondary:disabled { background: #efe9dc; color: #b6ab95; }
 .install-x { background: transparent; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px 6px; }
 .install-bar.hidden { display: none; }
 
+/* 覚醒の祭壇 */
+.ascension-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.valor-bal { font-weight: 800; color: #b8860b; display: flex; align-items: center; gap: 4px; padding: 2px 2px 4px; }
+.valor-bal .ico { color: #d9a521; }
+.asc-card { border-left: 4px solid #e6c14d; }
+.asc-card .gicon { color: #c98a2e; }
+.asc-card .effect b { color: var(--accent); }
+
 /* =========================================================
    インラインSVGアイコン
    ========================================================= */

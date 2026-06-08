@@ -321,7 +321,16 @@ function enhanceCost(uid) {
   const g = gearById(uid); const r = RECIPE_BY_ID[g.rid];
   const lv = g.enh || 0;
   const tier = Math.max(1, Math.round(gearScore(r) / 18));
-  return { gold: 40 * (lv + 1) + tier * 12 * (lv + 1), mat: "shard", matN: lv + 1 };
+  let gold = 40 * (lv + 1) + tier * 12 * (lv + 1);
+  let matN = lv + 1;
+  // 限界突破(+10超)：Gを幾何級数で増やす（Gは周回で指数的に増えるので食いつける）。
+  // 魔石は緩やかに。素材バカ食いではなくG主体のシンクにする。
+  if (lv >= ENHANCE_SOFT) {
+    const ob = lv - ENHANCE_SOFT + 1;
+    gold = Math.round(gold * Math.pow(1.16, ob));
+    matN = ENHANCE_SOFT + Math.ceil(ob / 2);
+  }
+  return { gold, mat: "shard", matN };
 }
 
 /* ---------- 素材の売値 ---------- */
@@ -470,6 +479,7 @@ function newGame() {
     settings: { sound: true, bgm: false, craftableOnly: false },
     lastBattle: null, gauntlet: null, hard: false, tower: null, towerBest: 0,
     loop: 0, loopUnlocked: 0, autoBattle: false,
+    valor: 0, asc: { atk: 0, hp: 0, def: 0 },
     currentGatherArea: "grassland",
   };
 }
@@ -554,6 +564,8 @@ function migrateSave(s) {
   s.loop = s.loop || 0; s.loopUnlocked = s.loopUnlocked || 0;
   if (s.loop > s.loopUnlocked) s.loop = s.loopUnlocked;
   s.autoBattle = !!s.autoBattle;
+  s.valor = s.valor || 0;
+  s.asc = Object.assign({ atk: 0, hp: 0, def: 0 }, s.asc);
   return s;
 }
 function readSlot(i) {
@@ -631,14 +643,20 @@ function importSave(code) {
 function expToNext(level) { return Math.floor(10 * Math.pow(level, 1.5)); }
 
 // 強化(+N)を反映した装備のステータス
-const ENHANCE_MAX = 10;
+// +10までは通常強化。+10超は「★限界突破」段階として乗算で伸び続ける（実質上限なし）。
+const ENHANCE_SOFT = 10;
+const ENHANCE_MAX = 9999;
 function enhanceLv(uid) { const g = gearById(uid); return g ? (g.enh || 0) : 0; }
 // 装備インスタンス g から最終ステータス（強化＋特性込み）
 function gearStats(g) {
   if (!g) return {};
   const r = RECIPE_BY_ID[g.rid]; if (!r) return {};
   const base = r.stats || {};
-  const f = 1 + 0.18 * (g.enh || 0);
+  // +10まで：1段+18%の加算。+10超(限界突破)：×1.08の複利で無限に伸びる
+  const lv = g.enh || 0;
+  const f = lv <= ENHANCE_SOFT
+    ? 1 + 0.18 * lv
+    : (1 + 0.18 * ENHANCE_SOFT) * Math.pow(1.08, lv - ENHANCE_SOFT);
   const out = {};
   for (const k of ["atk", "def", "hp", "mp"]) if (base[k]) out[k] = Math.round(base[k] * f);
   for (const k of ["crit", "guard", "dropBonus"]) if (base[k]) out[k] = base[k];
@@ -675,6 +693,10 @@ function derivedStats() {
     if (b.resist) for (const k in b.resist) resist[k] += b.resist[k];
   }
   for (const k in resist) resist[k] = Math.min(0.8, resist[k]);
+  // 覚醒（アセンション）：上限なしの乗算倍率
+  atk = Math.round(atk * ascFactor("atk"));
+  def = Math.round(def * ascFactor("def"));
+  maxHp = Math.round(maxHp * ascFactor("hp"));
   return { atk, def, maxHp, maxMp, crit, guard, dropBonus, resist, lifesteal, bonusDmg };
 }
 
@@ -696,6 +718,37 @@ function clampVitals() {
   state.mp = Math.min(state.mp, s.maxMp);
 }
 function seedPrice(item) { return Math.round(item.price * Math.pow(1.5, state.permBought[item.stat] || 0)); }
+
+/* ---------- 覚醒（アセンション）：上限なしの“複利”乗算強化 ----------
+   周回で指数的に増えるG＋専用通貨「覇者の証(valor)」を注ぐと、
+   ATK/HP/DEF に永続の乗算倍率が複利で乗る。コストは1段ごとに幾何級数で
+   増えるが、Gも周回で指数的に増えるため「周回するほど買える段数が増える＝
+   倍率も指数的に伸びる」→ 敵インフレ(攻撃×1.75/周回・HP×1.35/周回)に食いつける。 */
+const ASC = {
+  atk: { name: "剛力の覚醒", icon: "sword",  stat: "ATK",   mult: 1.05, g0: 250, gr: 1.15 },
+  hp:  { name: "生命の覚醒", icon: "heart",  stat: "最大HP", mult: 1.06, g0: 200, gr: 1.15 },
+  def: { name: "守護の覚醒", icon: "shield", stat: "DEF",   mult: 1.05, g0: 220, gr: 1.16 },
+};
+const ASC_KEYS = ["atk", "hp", "def"];
+function ascLv(track) { return (state.asc && state.asc[track]) || 0; }
+function ascFactor(track) { return Math.pow(ASC[track].mult, ascLv(track)); }
+function ascCost(track, lv) {
+  const c = ASC[track];
+  return { gold: Math.round(c.g0 * Math.pow(c.gr, lv)), valor: 1 + Math.floor(lv / 5) };
+}
+function buyAsc(track) {
+  if (!ASC[track]) return;
+  const lv = ascLv(track);
+  const c = ascCost(track, lv);
+  if (state.gold < c.gold || (state.valor || 0) < c.valor) { toast("Gか覇者の証が足りない"); sfx("deny"); return; }
+  state.gold -= c.gold; state.valor -= c.valor;
+  state.asc[track] = lv + 1;
+  clampVitals();
+  log(`🌟 ${ASC[track].name} +${state.asc[track]}！ ${ASC[track].stat} の倍率が上がった。`, "l-good");
+  toast(`${ASC[track].name} +${state.asc[track]}！`);
+  sfx("enhance");
+  save(); renderAll();
+}
 
 /* ---------- ログ＆トースト ---------- */
 function log(msg, cls = "") {
@@ -1216,6 +1269,10 @@ function winBattle() {
     const first = !state.bossCleared[battle.areaId];
     state.bossCleared[battle.areaId] = true;
     if (first) log(`👑 ボス初撃破！`, "l-good");
+    // 覇者の証：ボス撃破で獲得（周回・ハードで増える）
+    const vg = 1 + (battle.loop || 0) + (battle.hard ? 1 : 0);
+    state.valor = (state.valor || 0) + vg;
+    log(`🏅 覇者の証 ×${vg} を得た。（覚醒に使える）`, "l-gold");
     toast(`ボス『${recName}』を撃破！`);
   } else {
     toast(`${recName} 撃破！ +${e.exp}EXP`);
@@ -1232,6 +1289,10 @@ function winBattle() {
       state.gold += bonus;
       let extra = "";
       if (g.hard || (g.loop || 0) > 0) { const c = rand(3, 6) * (1 + (g.loop || 0)); addMat("chaos", c); questTrack("gather", "chaos", c); extra = ` ＋${MATERIALS.chaos.icon}×${c}`; }
+      // 覇者の証：制覇ボーナス（エリア難度・周回・ハードで増える）
+      const vbonus = Math.round((2 + AREAS.findIndex(a => a.id === g.areaId)) * (1 + (g.loop || 0)) * (g.hard ? 2 : 1));
+      state.valor = (state.valor || 0) + vbonus;
+      extra += ` ＋🏅${vbonus}`;
       log(`🏆 全${GAUNTLET_STAGES}ステージ制覇${(g.loop || 0) > 0 ? `【周回${g.loop}】` : ""}${g.hard ? "【🔥HARD】" : ""}！ クリアボーナス 💰${fmt(bonus)}G${extra}！`, "l-good");
       toast("🏆 ステージ制覇！");
       sfx("level");
@@ -1746,7 +1807,36 @@ function renderCraft() {
   }
 }
 
+function renderAscension() {
+  const wrap = document.getElementById("ascension-box");
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="valor-bal">${icon("trophy")} 覇者の証：<b>${fmt(state.valor || 0)}</b></div>`;
+  for (const track of ASC_KEYS) {
+    const c = ASC[track];
+    const lv = ascLv(track);
+    const cost = ascCost(track, lv);
+    const curMult = Math.round(ascFactor(track) * 100);
+    const nextMult = Math.round(Math.pow(c.mult, lv + 1) * 100);
+    const can = state.gold >= cost.gold && (state.valor || 0) >= cost.valor;
+    const card = document.createElement("div");
+    card.className = "recipe-card asc-card";
+    card.innerHTML = `
+      <div class="gicon">${icon(c.icon)}</div>
+      <div class="rinfo">
+        <h4>${c.name} <span class="ttag">Lv.${lv}</span></h4>
+        <div class="effect">${c.stat} ×${(curMult / 100).toFixed(2)} → <b>×${(nextMult / 100).toFixed(2)}</b>（1段ごと +${Math.round((c.mult - 1) * 100)}% 複利）</div>
+        <div class="cost">${icon("coin")} ${fmt(cost.gold)}G ＋ ${icon("trophy")}${cost.valor}</div>
+      </div>`;
+    const btn = document.createElement("button");
+    btn.className = "action"; btn.textContent = "覚醒"; btn.disabled = !can;
+    btn.onclick = () => buyAsc(track);
+    card.appendChild(btn);
+    wrap.appendChild(card);
+  }
+}
+
 function renderShop() {
+  renderAscension();
   const cWrap = document.getElementById("shop-consumable");
   cWrap.innerHTML = "";
   for (const it of SHOP.filter(x => x.kind === "consumable")) {
