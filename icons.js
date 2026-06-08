@@ -75,6 +75,26 @@ const ICONS = {
   arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="15" x2="4" y2="22"/><path d="M4 15s4-3 8 0 8 0 8 0V3s-4 3-8 0-8 0-8 0z"/></svg>',
   info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+
+  /* --- 素材アイコン --- */
+  wood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="14" rx="9" ry="5"/><line x1="3" y1="14" x2="3" y2="10"/><line x1="21" y1="14" x2="21" y2="10"/><ellipse cx="12" cy="10" rx="9" ry="5"/><line x1="7" y1="7" x2="7" y2="5"/><line x1="12" y1="5" x2="12" y2="3"/><line x1="17" y1="7" x2="17" y2="5"/></svg>',
+  stone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14l-2-10-4-6-4 6-4 10z"/><line x1="9" y1="14" x2="12" y2="10"/><line x1="12" y1="10" x2="15" y2="14"/></svg>',
+  ore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12l-8.5 8.5a2.12 2.12 0 01-3-3L12 9"/><path d="M17.64 15L22 10.64"/><path d="M20.91 11.7l-1.25-1.25c-.6-.6-.93-1.4-.93-2.25v-.86L16.01 4.6a5.56 5.56 0 00-3.94-1.64H9l.92.82A6.18 6.18 0 0112 8.4v1.56l2 2h2.47l2.26 1.91"/><circle cx="7" cy="19" r="1.5" fill="currentColor"/></svg>',
+  mithril: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l4 7h4l-3 5 2 8-7-4-7 4 2-8-3-5h4z"/></svg>',
+  gel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C7 3 4 7 4 11c0 5 3.5 9 8 9s8-4 8-9c0-4-3-8-8-8z"/><path d="M9 10c0 1.5 1 2.5 2 3"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>',
+  fang: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-1 10 5 3 5-3-1-10"/><path d="M9 3h6"/><path d="M9 13c0 2 1.5 5 3 6 1.5-1 3-4 3-6"/></svg>',
+  pelt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 0 2 2 2 5s-3 6-3 9c2 2 5 3 7 3s5-1 7-3c0-3-3-6-3-9s2-5 2-5"/><path d="M8 8c1 1 2 1 4 1s3 0 4-1"/><line x1="12" y1="9" x2="12" y2="20"/></svg>',
+  shard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 8-5 2 2 10-5-8 4-2-4-10z"/><path d="M16 4l2 6-3 1"/></svg>',
+  soul: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C9 3 6 6 6 10c0 3 1.5 5 3 6-1 2-1 3 0 4 1-1 2-1 3 0 1-1 2-1 3 0 1-1 1-2 0-4 1.5-1 3-3 3-6 0-4-3-7-6-7z"/><line x1="9" y1="12" x2="9" y2="12.5"/><line x1="15" y1="12" x2="15" y2="12.5"/></svg>',
+  darkcrystal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2l-6 9 8 11 8-11-6-9z"/><line x1="4" y1="11" x2="12" y2="22"/><line x1="20" y1="11" x2="12" y2="22"/><line x1="10" y1="2" x2="4" y2="11"/><line x1="14" y1="2" x2="20" y2="11"/><line x1="10" y1="2" x2="14" y2="2"/></svg>',
+  chaos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-3-3-6-2-6 1a5 5 0 005 5c3 0 4-3 1-6z"/><path d="M12 12c3-3 6-2 6 1a5 5 0 01-5 5c-3 0-4-3-1-6z"/><path d="M12 12c0-4 2-7 4-6-1 2-1 4 0 6-2 0-4 0-4 0z"/><path d="M12 12c0-4-2-7-4-6 1 2 1 4 0 6 2 0 4 0 4 0z"/></svg>',
+  seed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-8"/><path d="M12 14C8 14 5 11 5 7a7 7 0 0114 0c0 4-3 7-7 7z"/><path d="M12 14c2-2 2-5 0-7"/></svg>',
+
+  /* --- ログ/トースト用アイコン --- */
+  party: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3L2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="M22 2L11 13"/><path d="M11 13L9 6l10 3-6 4z"/></svg>',
+  burst: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>',
 };
 
 /* === EMOJI_MAP: UIのemoji → アイコン名 のマッピング === */
@@ -158,7 +178,62 @@ const EMOJI_MAP = {
   /* 設定 */
   "🔊": "sound",
   "🎵": "music",
+
+  /* 素材 */
+  "🪵": "wood",
+  "🪨": "stone",
+  "⛏️": "ore",
+  "⛏":  "ore",
+  "🔷": "mithril",
+  "🟢": "gel",
+  "🦷": "fang",
+  "🟫": "pelt",
+  "🟣": "shard",
+  "🔆": "soul",
+  "🟪": "darkcrystal",
+  "🌀": "chaos",
+
+  /* 種アイテム */
+  "🌰": "seed",
+  "🌱": "seed",
+  "🫘": "seed",
+
+  /* ログ/トースト */
+  "🌟": "star",
+  "💀": "skull",
+  "💰": "coin",
+  "🏁": "flag",
+  "⭐": "star",
+  "💚": "heart",
+  "📚": "book",
+  "🎉": "party",
+  "💥": "burst",
+  "▶":  "play",
+  "▲":  "up",
+  "⚒":  "hammer",
+  "⚒️": "hammer",
 };
+
+/**
+ * escapeHtml(s) → HTML特殊文字をエスケープした文字列
+ */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+/**
+ * iconifyText(s) → テキスト中のemoji を SVGアイコンに置換したHTML文字列
+ * ログ/トーストのような内部生成文字列を innerHTML に埋め込む際に使う。
+ * 長いキー（変異セレクタ付き等）から先に置換して取りこぼしを防ぐ。
+ */
+function iconifyText(s) {
+  let out = escapeHtml(s);
+  const keys = Object.keys(EMOJI_MAP).sort((a, b) => b.length - a.length);
+  for (const emo of keys) {
+    if (out.indexOf(emo) !== -1) out = out.split(emo).join(icon(EMOJI_MAP[emo]));
+  }
+  return out;
+}
 
 /**
  * icon(name, cls) → <span class="ico [cls]"><svg...></svg></span>

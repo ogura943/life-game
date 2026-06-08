@@ -755,7 +755,7 @@ function log(msg, cls = "") {
   const el = document.getElementById("log");
   const line = document.createElement("div");
   if (cls) line.className = cls;
-  line.textContent = msg;
+  line.innerHTML = iconifyText(msg);
   el.prepend(line);
   while (el.children.length > 60) el.removeChild(el.lastChild);
 }
@@ -765,7 +765,7 @@ function toast(msg) {
   if (t) t.remove();
   t = document.createElement("div");
   t.className = "toast";
-  t.textContent = msg;
+  t.innerHTML = iconifyText(msg);
   document.body.appendChild(t);
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.remove(), 1600);
@@ -1591,7 +1591,7 @@ function renderAreas() {
   const det = document.createElement("div");
   det.className = "area-detail";
   const locked = state.level < a.reqLevel;
-  const matIcons = locked ? "" : areaMaterials(a).map(m => MATERIALS[m].icon).join(" ");
+  const matIcons = locked ? "" : areaMaterials(a).map(m => iconify(MATERIALS[m].icon)).join(" ");
   const aIdx = AREAS.indexOf(a);
   const stars = "★".repeat(aIdx + 1) + "☆".repeat(Math.max(0, AREAS.length - 1 - aIdx));
   const banner = (typeof BG !== "undefined" && BG[a.id]) ? `<div class="area-banner" style="background-image:url(${BG[a.id]})">${locked ? `<div class="banner-lock">${icon("lock")} Lv.${a.reqLevel}</div>` : ""}</div>` : "";
@@ -1740,7 +1740,7 @@ function renderGather() {
     const have = toolTier(n.tool);
     const ok = have >= n.tier;
     const toolName = n.tool === "axe" ? "斧" : "ピッケル";
-    const yieldStr = n.yields.map(y => MATERIALS[y.mat].icon).join(" ");
+    const yieldStr = n.yields.map(y => iconify(MATERIALS[y.mat].icon)).join(" ");
     const card = document.createElement("div");
     card.className = "node-card";
     card.innerHTML = `
@@ -1782,7 +1782,7 @@ function renderCraft() {
     const haveN = state.gears.filter(g => g.rid === r.id).length;
     const costStr = Object.entries(r.cost).map(([m, q]) => {
       const lack = matQty(m) < q;
-      return `<span class="${lack ? "lack" : ""}">${MATERIALS[m].icon}${MATERIALS[m].name} ${matQty(m)}/${q}</span>`;
+      return `<span class="${lack ? "lack" : ""}">${iconify(MATERIALS[m].icon)}${MATERIALS[m].name} ${matQty(m)}/${q}</span>`;
     }).join("　");
     const typeLabel = { weapon: "武器", armor: "防具", accessory: "装飾" }[r.type];
     const card = document.createElement("div");
@@ -1887,7 +1887,7 @@ function renderShop() {
         const card = document.createElement("div");
         card.className = "recipe-card";
         card.innerHTML = `
-          <div class="gicon">${MATERIALS[mid].icon}</div>
+          <div class="gicon">${iconify(MATERIALS[mid].icon)}</div>
           <div class="rinfo">
             <h4>${MATERIALS[mid].name} <span class="ttag">所持 ×${matQty(mid)}</span></h4>
             <div class="cost">${icon("coin")} ${price}G / 個</div>
@@ -1993,7 +1993,7 @@ function renderEquip() {
       const c = enhanceCost(g.uid);
       const eb = document.createElement("button");
       eb.className = "action enh-btn";
-      eb.innerHTML = `${icon("hammer")} +${(g.enh || 0) + 1}<span class="enh-cost">${icon("coin")}${c.gold} ${MATERIALS[c.mat].icon}${c.matN}</span>`;
+      eb.innerHTML = `${icon("hammer")} +${(g.enh || 0) + 1}<span class="enh-cost">${icon("coin")}${c.gold} ${iconify(MATERIALS[c.mat].icon)}${c.matN}</span>`;
       eb.disabled = state.gold < c.gold || matQty(c.mat) < c.matN;
       eb.onclick = (e) => { e.stopPropagation(); enhance(g.uid); };
       btns.appendChild(eb);
@@ -2040,7 +2040,7 @@ function renderBag() {
     const card = document.createElement("div");
     card.className = "mat-row" + (q > 0 ? "" : " zero");
     card.innerHTML = `
-      <div class="micon">${MATERIALS[mid].icon}</div>
+      <div class="micon">${iconify(MATERIALS[mid].icon)}</div>
       <div class="minfo">
         <div class="mhead">${MATERIALS[mid].name} <span class="mqty">×${q}</span></div>
         <div class="msrc">入手元：${srcText}</div>
@@ -2070,8 +2070,8 @@ function renderRecord() {
       const claimed = state.questClaimed[q.id];
       const r = q.reward;
       const rewardStr = [r.gold ? `${icon("coin")}${r.gold}` : "",
-        ...Object.entries(r.mats || {}).map(([m, n]) => `${MATERIALS[m].icon}×${n}`),
-        ...Object.entries(r.items || {}).map(([it, n]) => `${SHOP_BY_ID[it].icon}×${n}`)].filter(Boolean).join(" ");
+        ...Object.entries(r.mats || {}).map(([m, n]) => `${iconify(MATERIALS[m].icon)}×${n}`),
+        ...Object.entries(r.items || {}).map(([it, n]) => `${iconify(SHOP_BY_ID[it].icon)}×${n}`)].filter(Boolean).join(" ");
       const card = document.createElement("div");
       card.className = "recipe-card" + (claimed ? " owned" : "");
       card.innerHTML = `
@@ -2105,8 +2105,8 @@ function renderRecord() {
       const claimed = state.dexClaimed[i];
       const ok = dexCount() >= m.n;
       const rewardStr = [r.gold ? `${icon("coin")}${r.gold}` : "",
-        ...Object.entries(r.mats || {}).map(([mat, n]) => `${MATERIALS[mat].icon}×${n}`),
-        ...Object.entries(r.items || {}).map(([it, n]) => `${SHOP_BY_ID[it].icon}×${n}`),
+        ...Object.entries(r.mats || {}).map(([mat, n]) => `${iconify(MATERIALS[mat].icon)}×${n}`),
+        ...Object.entries(r.items || {}).map(([it, n]) => `${iconify(SHOP_BY_ID[it].icon)}×${n}`),
         r.owned ? `${iconify(RECIPE_BY_ID[r.owned].icon)}${RECIPE_BY_ID[r.owned].name}` : ""].filter(Boolean).join(" ");
       const card = document.createElement("div");
       card.className = "recipe-card" + (claimed ? " owned" : "");
@@ -2135,7 +2135,7 @@ function renderRecord() {
           <h4>${found ? (m.isBoss ? icon("crown") : "") + m.name : "？？？"}</h4>
           <div class="sub">${found ? `${m.area} ・ 撃破 ${cnt}` : "未発見"}</div>
           ${found ? `<div class="sub">弱点 ${elemLabelUI(m.weak)}${m.resist ? "・耐性 " + elemLabelUI(m.resist) : ""}</div>
-          <div class="sub">ドロップ: ${(m.drops || []).map(d => MATERIALS[d.mat].icon).join(" ")}</div>` : ""}
+          <div class="sub">ドロップ: ${(m.drops || []).map(d => iconify(MATERIALS[d.mat].icon)).join(" ")}</div>` : ""}
         </div>`;
       dWrap.appendChild(card);
     }

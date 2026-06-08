@@ -1,5 +1,5 @@
 /* Service Worker: オフラインでもアプリのように起動できるようにキャッシュする */
-const CACHE = "fantasy-life-v27";
+const CACHE = "fantasy-life-v28";
 const ASSETS = [
   "./",
   "./index.html",
