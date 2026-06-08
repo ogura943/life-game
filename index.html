@@ -23,28 +23,20 @@
 <div id="app">
   <!-- ヘッダー：プレイヤーステータス -->
   <header id="status-bar">
-    <div class="stat">
-      <span class="stat-label">Lv</span>
-      <span id="stat-level">1</span>
+    <div id="hero-portrait" class="hero-portrait"></div>
+    <div class="hero-main">
+      <div class="hero-row1">
+        <span class="hero-lv">Lv.<b id="stat-level">1</b></span>
+        <span class="hero-gold"><span class="coin">🪙</span><b id="stat-gold">0</b></span>
+      </div>
+      <div class="sbar"><span class="sbl shp">HP</span><div class="bar"><div id="hp-fill" class="bar-fill"></div></div><span id="stat-hp" class="sbv">30/30</span></div>
+      <div class="sbar"><span class="sbl smp">MP</span><div class="bar"><div id="mp-fill" class="bar-fill mp"></div></div><span id="stat-mp" class="sbv">10/10</span></div>
+      <div class="sbar"><span class="sbl sxp">EXP</span><div class="bar"><div id="exp-fill" class="bar-fill exp"></div></div><span id="stat-exp" class="sbv">0/10</span></div>
+      <div class="hero-chips">
+        <span class="hchip"><span class="hi">⚔</span><b id="stat-atk">5</b></span>
+        <span class="hchip"><span class="hi">🛡</span><b id="stat-def">2</b></span>
+      </div>
     </div>
-    <div class="stat hp-stat">
-      <span class="stat-label">HP</span>
-      <div class="bar"><div id="hp-fill" class="bar-fill"></div></div>
-      <span id="stat-hp">30/30</span>
-    </div>
-    <div class="stat mp-stat">
-      <span class="stat-label">MP</span>
-      <div class="bar"><div id="mp-fill" class="bar-fill mp"></div></div>
-      <span id="stat-mp">10/10</span>
-    </div>
-    <div class="stat exp-stat">
-      <span class="stat-label">EXP</span>
-      <div class="bar"><div id="exp-fill" class="bar-fill exp"></div></div>
-      <span id="stat-exp">0/10</span>
-    </div>
-    <div class="stat"><span class="stat-label">⚔</span><span id="stat-atk">5</span></div>
-    <div class="stat"><span class="stat-label">🛡</span><span id="stat-def">2</span></div>
-    <div class="stat"><span class="stat-label">💰</span><span id="stat-gold">0</span></div>
   </header>
 
   <!-- タブナビ（下部固定メニュー） -->
